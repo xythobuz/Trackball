@@ -13,8 +13,12 @@ add_executable(trackball)
 
 target_sources(trackball PUBLIC
     src/main.c
+    src/log.c
+    src/pmw3360.c
     src/usb.c
+    src/usb_cdc.c
     src/usb_descriptors.c
+    src/usb_hid.c
 )
 
 # Make sure TinyUSB can find tusb_config.h
@@ -23,8 +27,10 @@ target_include_directories(trackball PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 # pull in common dependencies
 target_link_libraries(trackball
     pico_stdlib
+    pico_unique_id
     tinyusb_device
     tinyusb_board
+    hardware_spi
 )
 
 # fix for Errata RP2040-E5 (the fix requires use of GPIO 15)
