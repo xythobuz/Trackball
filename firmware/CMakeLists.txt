@@ -13,7 +13,9 @@ add_executable(trackball)
 
 target_sources(trackball PUBLIC
     src/main.c
+    src/console.c
     src/log.c
+    src/util.c
     src/pmw3360.c
     src/usb.c
     src/usb_cdc.c
@@ -23,6 +25,11 @@ target_sources(trackball PUBLIC
 
 # Make sure TinyUSB can find tusb_config.h
 target_include_directories(trackball PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+
+target_compile_options(trackball PUBLIC
+    -Wall
+    -Werror
+)
 
 # pull in common dependencies
 target_link_libraries(trackball

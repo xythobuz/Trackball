@@ -15,4 +15,4 @@ echo Opening picocom terminal
 echo "[C-a] [C-x] to exit"
 echo
 
-picocom -q $SERIAL
+picocom -q --omap crcrlf $SERIAL

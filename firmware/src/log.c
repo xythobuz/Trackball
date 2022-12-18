@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "usb.h"
+#include "usb_cdc.h"
 #include "log.h"
 
 char log_buff[4096];
@@ -66,7 +66,7 @@ static int format_debug_log(char *buff, size_t len, const char *format, va_list 
     return l;
 }
 
-void debug_log(const char* format, ...) {
+void debug_log(bool log, const char* format, ...) {
     static char line_buff[256];
 
     va_list args;
@@ -76,6 +76,9 @@ void debug_log(const char* format, ...) {
 
     if ((l > 0) && (l <= sizeof(line_buff))) {
         usb_cdc_write(line_buff, l);
-        add_to_log(line_buff, l);
+
+        if (log) {
+            add_to_log(line_buff, l);
+        }
     }
 }

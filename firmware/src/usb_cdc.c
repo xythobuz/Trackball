@@ -25,11 +25,12 @@
 
 #include "bsp/board.h"
 #include "tusb.h"
-#include "pico/bootrom.h"
 
+#include "console.h"
 #include "log.h"
+#include "util.h"
 #include "usb_descriptors.h"
-#include "usb.h"
+#include "usb_cdc.h"
 
 void usb_cdc_write(const char *buf, uint32_t count) {
 #ifndef DISABLE_CDC_DTR_CHECK
@@ -38,41 +39,41 @@ void usb_cdc_write(const char *buf, uint32_t count) {
     }
 #endif // DISABLE_CDC_DTR_CHECK
 
+    // implemented similar to Pico SDK stdio usb
     uint32_t len = 0;
-
     while (len < count) {
         uint32_t n = count - len;
         uint32_t available = tud_cdc_write_available();
 
+        // only write as much as possible
         if (n > available) {
             n = available;
         }
 
         len += tud_cdc_write(buf + len, n);
+
+        // run tud_task to actually move stuff from FIFO
         tud_task();
         tud_cdc_write_flush();
     }
 }
 
 void cdc_task(void) {
+    const uint32_t cdc_buf_len = 64;
+
     if (tud_cdc_available()) {
-        char buf[64];
-        uint32_t count = tud_cdc_read(buf, sizeof(buf));
+        char buf[cdc_buf_len + 1];
+        uint32_t count = tud_cdc_read(buf, cdc_buf_len);
 
-        if ((count >= 1) && (buf[0] == 27)) {
-            // escape key
+        if ((count >= 1) && (buf[0] == 0x18)) {
+            // ASCII 0x18 = CAN (cancel)
             debug("switching to bootloader");
-
-#ifdef PICO_DEFAULT_LED_PIN
-            reset_usb_boot(1 << PICO_DEFAULT_LED_PIN, 0);
-#else
-            reset_usb_boot(0, 0);
-#endif
+            reset_to_bootloader();
         } else {
             // echo back
             usb_cdc_write(buf, count);
 
-            // TODO handle user input
+            cnsl_handle_input(buf, count);
         }
     }
 }
@@ -85,7 +86,12 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     static bool last_dtr = false;
 
     if (dtr && !last_dtr) {
+        // clear left-over console input
+        cnsl_init();
+
+        // show past history
         log_dump_to_usb();
+
         debug("terminal connected");
     } else if (!dtr && last_dtr) {
         debug("terminal disconnected");
@@ -97,4 +103,5 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 // invoked when CDC interface received data from host
 void tud_cdc_rx_cb(uint8_t itf) {
     (void) itf;
+    cdc_task();
 }

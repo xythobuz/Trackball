@@ -57,6 +57,11 @@
 
 #define WRITE_BIT 0x80
 
+#define REG_MOTION_MOT 7
+#define REG_MOTION_LIFT 3
+#define REG_MOTION_OP_1 1
+#define REG_MOTION_OP_2 2
+
 struct pmw_motion_report {
     uint8_t motion;
     uint8_t observation;

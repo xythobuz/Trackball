@@ -8,7 +8,7 @@ MOUNT=/mnt/tmp
 if [ ! -e $DISK ]
 then
     echo Resetting Raspberry Pi Pico
-    echo -n -e "\\x1b" > $SERIAL
+    echo -n -e "\\x18" > $SERIAL
 fi
 
 echo -n Waiting for disk to appear

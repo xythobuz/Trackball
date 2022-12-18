@@ -27,7 +27,7 @@
 #include "tusb.h"
 
 #include "usb_descriptors.h"
-#include "usb.h"
+#include "usb_hid.h"
 
 static void send_hid_report(uint8_t report_id, uint32_t btn) {
     // skip if hid is not ready yet
@@ -179,12 +179,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 
             if (kbd_leds & KEYBOARD_LED_CAPSLOCK) {
                 // Capslock On: disable blink, turn led on
-                blink_interval_ms = 0;
+                //blink_interval_ms = 0;
                 board_led_write(true);
             } else {
                 // Caplocks Off: back to normal blink
                 board_led_write(false);
-                blink_interval_ms = BLINK_MOUNTED;
+                //blink_interval_ms = BLINK_MOUNTED;
             }
         }
     }
