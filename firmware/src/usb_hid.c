@@ -29,6 +29,9 @@
 #include "usb_descriptors.h"
 #include "usb_hid.h"
 
+// TODO
+extern int16_t delta_x, delta_y;
+
 static void send_hid_report(uint8_t report_id, uint32_t btn) {
     // skip if hid is not ready yet
     if ( !tud_hid_ready() ) return;
@@ -55,10 +58,12 @@ static void send_hid_report(uint8_t report_id, uint32_t btn) {
 
         case REPORT_ID_MOUSE:
         {
-            int8_t const delta = 5;
-
             // no button, right + down, no scroll, no pan
-            tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta, delta, 0, 0);
+            tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta_x, delta_y, 0, 0);
+
+            // TODO
+            delta_x = 0;
+            delta_y = 0;
         }
         break;
 
@@ -130,7 +135,8 @@ void hid_task(void) {
         tud_remote_wakeup();
     } else {
         // Send the 1st of report chain, the rest will be sent by tud_hid_report_complete_cb()
-        send_hid_report(REPORT_ID_KEYBOARD, btn);
+        //send_hid_report(REPORT_ID_KEYBOARD, btn);
+        send_hid_report(REPORT_ID_MOUSE, btn);
     }
 }
 

@@ -21,7 +21,9 @@
 #include "pico/binary_info.h"
 #include "hardware/spi.h"
 
+#define PMW_PRINT_IDS
 #define PMW_IRQ_COUNTERS
+//#define PMW_FEATURE_WIRELESS
 
 #include "log.h"
 #include "pmw3360_registers.h"
@@ -73,48 +75,68 @@ static inline void pmw_cs_deselect() {
 }
 
 static void pmw_write_register(uint8_t reg, uint8_t data) {
-    uint8_t buf[2];
-    buf[0] = reg | WRITE_BIT;
-    buf[1] = data;
     pmw_cs_select();
-    spi_write_blocking(spi_default, buf, 2);
+
+    reg |= WRITE_BIT;
+    spi_write_blocking(spi_default, &reg, 1);
+
+    busy_wait_us(15);
+
+    spi_write_blocking(spi_default, &data, 1);
+
+    busy_wait_us(20);
     pmw_cs_deselect();
-    sleep_ms(10);
+    busy_wait_us(100);
 }
 
 static uint8_t pmw_read_register(uint8_t reg) {
-    uint8_t buf = 0;
-    reg &= ~WRITE_BIT;
     pmw_cs_select();
+
+    reg &= ~WRITE_BIT;
     spi_write_blocking(spi_default, &reg, 1);
-    sleep_ms(10);
+
+    busy_wait_us(160);
+
+    uint8_t buf = 0;
     spi_read_blocking(spi_default, 0, &buf, 1);
+
+    busy_wait_us(1);
     pmw_cs_deselect();
-    sleep_ms(10);
+    busy_wait_us(20);
+
     return buf;
 }
 
 static void pmw_write_register_burst(uint8_t reg, const uint8_t *buf, uint16_t len) {
-    reg |= WRITE_BIT;
     pmw_cs_select();
+
+    reg |= WRITE_BIT;
     spi_write_blocking(spi_default, &reg, 1);
-    sleep_us(15);
+
+    busy_wait_us(15);
+
     for (uint16_t i = 0; i < len; i++) {
         spi_write_blocking(spi_default, buf + i, 1);
-        sleep_us(15);
+        busy_wait_us(15);
     }
+
     pmw_cs_deselect();
-    sleep_us(1);
+
+    busy_wait_us(1);
 }
 
 static void pmw_read_register_burst(uint8_t reg, uint8_t *buf, uint16_t len) {
-    reg &= ~WRITE_BIT;
     pmw_cs_select();
+
+    reg &= ~WRITE_BIT;
     spi_write_blocking(spi_default, &reg, 1);
-    sleep_ms(1);//sleep_us(15); // TODO tSRAD_MOTBR
+
+    busy_wait_us(35);
+
     spi_read_blocking(spi_default, 0, buf, len);
+
     pmw_cs_deselect();
-    sleep_us(1);
+    busy_wait_us(1);
 }
 
 static uint8_t pmw_srom_download(void) {
@@ -125,17 +147,17 @@ static uint8_t pmw_srom_download(void) {
     pmw_write_register(REG_SROM_ENABLE, 0x1D);
 
     // Wait for 10 ms
-    sleep_ms(10);
+    busy_wait_ms(10);
 
     // Write 0x18 to SROM_Enable register again to start SROM Download
     pmw_write_register(REG_SROM_ENABLE, 0x18);
 
-    sleep_us(120);
+    busy_wait_us(120);
 
     // Write SROM file into SROM_Load_Burst register, 1st data must start with SROM_Load_Burst address.
     pmw_write_register_burst(REG_SROM_LOAD_BURST, pmw_fw_data, pmw_fw_length);
 
-    sleep_us(200);
+    busy_wait_us(200);
 
     // Read the SROM_ID register to verify the ID before any other register reads or writes
     uint8_t srom_id = pmw_read_register(REG_SROM_ID);
@@ -143,11 +165,15 @@ static uint8_t pmw_srom_download(void) {
 }
 
 static uint8_t pmw_power_up(void) {
+    pmw_cs_deselect();
+    pmw_cs_select();
+    pmw_cs_deselect();
+
     // Write 0x5A to Power_Up_Reset register
     pmw_write_register(REG_POWER_UP_RESET, 0x5A);
 
     // Wait for at least 50ms
-    sleep_ms(50);
+    busy_wait_ms(50);
 
     // Read from registers 0x02, 0x03, 0x04, 0x05 and 0x06 one time
     for (uint8_t reg = REG_MOTION; reg <= REG_DELTA_Y_H; reg++) {
@@ -174,10 +200,10 @@ static uint16_t pmw_srom_checksum(void) {
     pmw_write_register(REG_SROM_ENABLE, 0x15);
 
     // Wait for at least 10 ms
-    sleep_ms(10);
+    busy_wait_ms(10);
 
     uint16_t data = pmw_read_register(REG_DATA_OUT_LOWER);
-    data &= pmw_read_register(REG_DATA_OUT_UPPER) << 8;
+    data |= pmw_read_register(REG_DATA_OUT_UPPER) << 8;
     return data;
 }
 
@@ -202,6 +228,16 @@ static void pmw_spi_init(void) {
     // make the SPI pins available to picotool
     bi_decl(bi_3pins_with_func(PICO_DEFAULT_SPI_RX_PIN, PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI));
     bi_decl(bi_1pin_with_name(PICO_DEFAULT_SPI_CSN_PIN, "SPI CS"));
+}
+
+// TODO
+int16_t delta_x = 0, delta_y = 0;
+int convTwosComp(int b){
+    //Convert from 2's complement
+    if(b & 0x8000){
+        b = -1 * ((b ^ 0xffff) + 1);
+    }
+    return b;
 }
 
 static void pmw_handle_interrupt(void) {
@@ -234,13 +270,13 @@ static void pmw_handle_interrupt(void) {
     }
 #endif // PMW_IRQ_COUNTERS
 
-    // TODO
+    delta_x += convTwosComp(motion_report.delta_x_l | (motion_report.delta_x_h << 8));
+    delta_y += convTwosComp(motion_report.delta_y_l | (motion_report.delta_y_h << 8));
 }
 
 static void pmw_motion_irq(void) {
     if (gpio_get_irq_event_mask(PMW_MOTION_PIN) & GPIO_IRQ_EDGE_FALL) {
         gpio_acknowledge_irq(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL);
-
         pmw_handle_interrupt();
     }
 }
@@ -252,29 +288,44 @@ int pmw_init(void) {
 
     uint8_t prod_id = pmw_read_register(REG_PRODUCT_ID);
     uint8_t inv_prod_id = pmw_read_register(REG_INVERSE_PRODUCT_ID);
-    uint8_t rev_id = pmw_read_register(REG_REVISION_ID);
     uint16_t srom_checksum = pmw_srom_checksum();
+
+#ifdef PMW_PRINT_IDS
+    uint8_t rev_id = pmw_read_register(REG_REVISION_ID);
 
     debug("SROM ID: 0x%02X", srom_id);
     debug("Product ID: 0x%02X", prod_id);
     debug("~ Prod. ID: 0x%02X", inv_prod_id);
     debug("Revision ID: 0x%02X", rev_id);
     debug("SROM CRC: 0x%04X", srom_checksum);
+#endif // PMW_PRINT_IDS
 
     if (prod_id != ((~inv_prod_id) & 0xFF)) {
         debug("SPI communication error (0x%02X != ~0x%02X)", prod_id, inv_prod_id);
         return -1;
     }
 
+    if (srom_id != pmw_fw_id) {
+        debug("PMW3360 error: invalid SROM ID (0x%02X != 0x%02X)", srom_id, pmw_fw_id);
+        return -1;
+    }
+
+    if (srom_checksum != pmw_fw_crc) {
+        debug("PMW3360 error: invalid SROM CRC (0x%04X != 0x%04X)", srom_checksum, pmw_fw_crc);
+        return -1;
+    }
+
     // Write 0x00 to Config2 register for wired mouse or 0x20 for wireless mouse design
-#ifdef FEATURE_WIRELESS
+#ifdef PMW_FEATURE_WIRELESS
     pmw_write_register(REG_CONFIG2, 0x20);
-#else
+#else // ! PMW_FEATURE_WIRELESS
     pmw_write_register(REG_CONFIG2, 0x00);
-#endif
+#endif // PMW_FEATURE_WIRELESS
 
     // setup MOTION pin interrupt to handle reading data
     gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, true);
+    irq_set_enabled(IO_IRQ_BANK0, true);
 
     // make MOTION pin available to picotool
     bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
