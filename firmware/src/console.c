@@ -2,10 +2,14 @@
  * console.c
  */
 
+#include <inttypes.h>
 #include <string.h>
 #include "pico/stdlib.h"
+
+#include "config.h"
 #include "log.h"
 #include "pmw3360.h"
+#include "util.h"
 #include "console.h"
 
 #define CNSL_BUFF_SIZE 1024
@@ -18,11 +22,28 @@ static void cnsl_interpret(const char *line) {
             || (strcmp(line, "h") == 0)
             || (strcmp(line, "?") == 0)) {
         print("Trackball Firmware Usage:");
-        print("    help - print this message");
-        print("     pmw - print PMW3360 status");
-        print("    \\x18 - reset to bootloader");
+        print("    cpi - print current sensitivity");
+        print("  cpi N - set sensitivity");
+        print("    pmw - print PMW3360 status");
+        print("   help - print this message");
+        print("   \\x18 - reset to bootloader");
     } else if (strcmp(line, "pmw") == 0) {
-        print_pmw_status();
+        pmw_print_status();
+    } else if (strcmp(line, "cpi") == 0) {
+        uint8_t sense = pmw_get_sensitivity();
+        uint16_t cpi = PMW_SENSE_TO_CPI(sense);
+        print("current cpi: %u (0x%02X)", cpi, sense);
+    } else if (str_startswith(line, "cpi ")) {
+        const char *num_str = line + 4;
+        uintmax_t num = strtoumax(num_str, NULL, 10);
+        if ((num < 100) || (num > 12000)) {
+            print("invalid cpi %llu, needs to be %u <= cpi <= %u", num, 100, 12000);
+        } else {
+            num /= 100;
+            num -= 1;
+            print("setting cpi to 0x%02llX", num);
+            pmw_set_sensitivity(num);
+        }
     } else {
         print("unknown command \"%s\"", line);
     }

@@ -26,6 +26,7 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
+#include "config.h"
 #include "usb_descriptors.h"
 #include "usb_hid.h"
 
@@ -59,7 +60,7 @@ static void send_hid_report(uint8_t report_id, uint32_t btn) {
         case REPORT_ID_MOUSE:
         {
             // no button, right + down, no scroll, no pan
-            tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta_x, delta_y, 0, 0);
+            tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, -delta_x, -delta_y, 0, 0);
 
             // TODO
             delta_x = 0;

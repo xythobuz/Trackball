@@ -26,6 +26,7 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
+#include "config.h"
 #include "console.h"
 #include "log.h"
 #include "util.h"

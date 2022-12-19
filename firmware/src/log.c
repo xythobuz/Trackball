@@ -5,6 +5,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
+
+#include "config.h"
 #include "usb_cdc.h"
 #include "log.h"
 

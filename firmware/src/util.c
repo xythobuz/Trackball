@@ -2,8 +2,11 @@
  * util.c
  */
 
+#include <string.h>
 #include "pico/stdlib.h"
 #include "pico/bootrom.h"
+
+#include "config.h"
 #include "util.h"
 
 #define HEARTBEAT_INTERVAL_MS 500
@@ -28,6 +31,14 @@ void heartbeat_run(void) {
         gpio_xor_mask(1 << PICO_DEFAULT_LED_PIN);
     }
 #endif // PICO_DEFAULT_LED_PIN
+}
+
+bool str_startswith(const char *str, const char *start) {
+    size_t l = strlen(start);
+    if (l > strlen(str)) {
+        return false;
+    }
+    return (strncmp(str, start, l) == 0);
 }
 
 void reset_to_bootloader(void) {

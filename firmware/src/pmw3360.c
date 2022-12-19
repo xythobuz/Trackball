@@ -21,10 +21,7 @@
 #include "pico/binary_info.h"
 #include "hardware/spi.h"
 
-#define PMW_PRINT_IDS
-#define PMW_IRQ_COUNTERS
-//#define PMW_FEATURE_WIRELESS
-
+#include "config.h"
 #include "log.h"
 #include "pmw3360_registers.h"
 #include "pmw3360_srom.h"
@@ -33,8 +30,6 @@
 #if !defined(spi_default) || !defined(PICO_DEFAULT_SPI_SCK_PIN) || !defined(PICO_DEFAULT_SPI_TX_PIN) || !defined(PICO_DEFAULT_SPI_RX_PIN) || !defined(PICO_DEFAULT_SPI_CSN_PIN)
 #error PMW3360 API requires a board with SPI pins
 #endif
-
-#define PMW_MOTION_PIN 20
 
 #ifdef PMW_IRQ_COUNTERS
 static uint64_t pmw_irq_count_all = 0;
@@ -48,7 +43,7 @@ static uint64_t pmw_irq_count_rest2 = 0;
 static uint64_t pmw_irq_count_rest3 = 0;
 #endif // PMW_IRQ_COUNTERS
 
-void print_pmw_status(void) {
+void pmw_print_status(void) {
 #ifdef PMW_IRQ_COUNTERS
     print("    pmw_irq_cnt_all = %llu", pmw_irq_count_all);
     print(" pmw_irq_cnt_motion = %llu", pmw_irq_count_motion);
@@ -281,6 +276,26 @@ static void pmw_motion_irq(void) {
     }
 }
 
+void pmw_set_sensitivity(uint8_t sens) {
+    if (sens > 0x77) {
+        debug("invalid sense, clamping (0x%X > 0x77)", sens);
+        sens = 0x77;
+    }
+
+    pmw_write_register(REG_CONFIG1, sens);
+    pmw_write_register(REG_CONFIG5, sens);
+}
+
+uint8_t pmw_get_sensitivity(void) {
+    uint8_t sense_y = pmw_read_register(REG_CONFIG1);
+    uint8_t sense_x = pmw_read_register(REG_CONFIG5);
+    if (sense_y != sense_x) {
+        debug("sensitivity differs for x (0x%02X) and y (0x%02X). resetting.", sense_x, sense_y);
+        pmw_write_register(REG_CONFIG5, sense_y);
+    }
+    return sense_y;
+}
+
 int pmw_init(void) {
     pmw_spi_init();
 
@@ -321,6 +336,10 @@ int pmw_init(void) {
 #else // ! PMW_FEATURE_WIRELESS
     pmw_write_register(REG_CONFIG2, 0x00);
 #endif // PMW_FEATURE_WIRELESS
+
+    // Set sensitivity for each axis
+    pmw_write_register(REG_CONFIG2, pmw_read_register(REG_CONFIG2) | 0x04);
+    pmw_set_sensitivity(0x31); // default: 5000cpi
 
     // setup MOTION pin interrupt to handle reading data
     gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);

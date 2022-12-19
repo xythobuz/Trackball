@@ -26,6 +26,7 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
+#include "config.h"
 #include "usb_descriptors.h"
 #include "usb_cdc.h"
 #include "usb_hid.h"

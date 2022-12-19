@@ -4,6 +4,7 @@
 
 #include "pico/stdlib.h"
 
+#include "config.h"
 #include "util.h"
 #include "console.h"
 #include "log.h"

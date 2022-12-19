@@ -25,6 +25,8 @@
 
 #include "pico/unique_id.h"
 #include "tusb.h"
+
+#include "config.h"
 #include "usb_descriptors.h"
 
 /*
