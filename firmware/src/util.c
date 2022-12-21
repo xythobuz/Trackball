@@ -41,6 +41,13 @@ bool str_startswith(const char *str, const char *start) {
     return (strncmp(str, start, l) == 0);
 }
 
+int32_t convert_two_complement(int32_t b) {
+    if (b & 0x8000) {
+        b = -1 * ((b ^ 0xffff) + 1);
+    }
+    return b;
+}
+
 void reset_to_bootloader(void) {
 #ifdef PICO_DEFAULT_LED_PIN
     reset_usb_boot(1 << PICO_DEFAULT_LED_PIN, 0);

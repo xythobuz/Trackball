@@ -31,6 +31,9 @@
 #error PMW3360 API requires a board with SPI pins
 #endif
 
+static volatile int32_t delta_x = 0, delta_y = 0;
+static volatile bool mouse_motion = false;
+
 #ifdef PMW_IRQ_COUNTERS
 static uint64_t pmw_irq_count_all = 0;
 static uint64_t pmw_irq_count_motion = 0;
@@ -55,6 +58,26 @@ void pmw_print_status(void) {
     print("  pmw_irq_cnt_rest2 = %llu", pmw_irq_count_rest2);
     print("  pmw_irq_cnt_rest3 = %llu", pmw_irq_count_rest3);
 #endif // PMW_IRQ_COUNTERS
+}
+
+struct pmw_motion pmw_get(void) {
+    struct pmw_motion r;
+    r.motion = mouse_motion;
+    r.delta_x = 0;
+    r.delta_y = 0;
+
+    if (r.motion) {
+        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, false);
+
+        r.delta_x = delta_x;
+        r.delta_y = delta_y;
+        delta_x = 0;
+        delta_y = 0;
+
+        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, true);
+    }
+
+    return r;
 }
 
 static inline void pmw_cs_select() {
@@ -225,16 +248,6 @@ static void pmw_spi_init(void) {
     bi_decl(bi_1pin_with_name(PICO_DEFAULT_SPI_CSN_PIN, "SPI CS"));
 }
 
-// TODO
-int16_t delta_x = 0, delta_y = 0;
-int convTwosComp(int b){
-    //Convert from 2's complement
-    if(b & 0x8000){
-        b = -1 * ((b ^ 0xffff) + 1);
-    }
-    return b;
-}
-
 static void pmw_handle_interrupt(void) {
     struct pmw_motion_report motion_report = pmw_motion_read();
 
@@ -265,8 +278,12 @@ static void pmw_handle_interrupt(void) {
     }
 #endif // PMW_IRQ_COUNTERS
 
-    delta_x += convTwosComp(motion_report.delta_x_l | (motion_report.delta_x_h << 8));
-    delta_y += convTwosComp(motion_report.delta_y_l | (motion_report.delta_y_h << 8));
+    uint16_t delta_x_raw = motion_report.delta_x_l | (motion_report.delta_x_h << 8);
+    uint16_t delta_y_raw = motion_report.delta_y_l | (motion_report.delta_y_h << 8);
+
+    delta_x += convert_two_complement(delta_x_raw);
+    delta_y += convert_two_complement(delta_y_raw);
+    mouse_motion = true;
 }
 
 static void pmw_motion_irq(void) {

@@ -15,9 +15,6 @@
  * For the PMW3360 breakout board get this:
  * https://github.com/jfedor2/pmw3360-breakout
  *
- * The "Threads" library used by this project is:
- * Copyright 2022 Dan Kirshner - dan_kirshner@yahoo.com
- *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -34,10 +31,6 @@
 // https://www.thingiverse.com/thing:421524
 use <external/cherry_mx.scad>
 
-// https://dkprojects.net/openscad-threads/
-use <external/threads.scad>
-//use <threadlib.scad>
-
 // ######################
 // ## Rendering Select ##
 // ######################
@@ -48,7 +41,9 @@ use <external/threads.scad>
 //mx_switch_cutout(wall);
 //mx_switch_test();
 //roller_mount_test();
+
 roller_mount_tri();
+
 //roller_holder();
 //trackball();
 
@@ -63,11 +58,10 @@ roller_ball_h = 8;
 roller_count = 3;
 
 wall = 3.0;
-
-cut_roller_holder = false;
-draw_threads = true;
 $c = 0.1;
 $e = 0.01;
+
+cut_roller_holder = false;
 
 // #######################
 // ## Raspberry Pi Pico ##
@@ -124,6 +118,16 @@ sensor_pin_pitch = 0.89;
 
 sensor_pin1_to_optical_center = 5.66;
 
+sensor_lens_cutout_r = 2.0;
+sensor_lens_cutout_w = 4.0;
+sensor_lens_cutout_growth = 0.25;
+sensor_lens_cutout_to_chip = 6.71 - 1.60;
+sensor_lens_baseplate_h = 2.40;
+
+sensor_lens_d = 19.0;
+sensor_lens_w = 21.35;
+sensor_lens_off = 10.97;
+
 // ######################
 // ## MX Switch Cutout ##
 // ######################
@@ -149,10 +153,12 @@ mx_travel = 3.9;
 // ### Implementation ###
 // ######################
 
-m3_thread=2.7;
-m2_thread=1.8;
+base_dia = pico_l + 9;
+
+m3_thread = 2.7;
+m2_thread = 1.8;
+
 roller_thread_dia = roller_dia + 5.0;
-roller_thread_pitch = 2.0;
 roller_h = roller_dia + 7.0;
 roller_ball_h_off = 0.4;
 roller_ball_hold_off = 0.5;
@@ -167,7 +173,7 @@ ball_h = 15; // todo
 
 switch_test_w = 25;
 
-$fn = 42;
+$fn = 100;
 
 function sphere_r_at_h(h, r) = r * sin(acos(h / r));
 function sphere_angle_at_rh(h, r) = acos(h / r);
@@ -230,6 +236,38 @@ module pico() {
     }
 }
 
+module sensor_lens_cutout_intern() {
+    cylinder(d = sensor_lens_cutout_r * 2, h = $e);
+    
+    translate([-sensor_lens_cutout_r, 0, 0])
+    cube([sensor_lens_cutout_r * 2, sensor_lens_cutout_w, $e]);
+}
+
+module rounded_cube(x, y, z, r) {
+    hull()
+    for (tx = [r, x - r])
+    for (ty = [r, y - r])
+    translate([tx, ty, 0])
+    cylinder(d = r * 2, h = z);
+}
+
+module sensor_lens_cutout() {
+    translate([0, 0, sensor_lens_cutout_to_chip])
+    hull() {
+        translate([0, 0, sensor_lens_baseplate_h - $e])
+        sensor_lens_cutout_intern();
+        
+        scale(1 + sensor_lens_cutout_growth * sensor_lens_baseplate_h)
+        sensor_lens_cutout_intern();
+    }
+    
+    translate([-sensor_lens_d / 2, -sensor_lens_w + sensor_lens_off, 0])
+    rounded_cube(sensor_lens_d, sensor_lens_w, sensor_lens_cutout_to_chip, 6);
+    
+    translate([-3 / 2, -sensor_lens_w + sensor_lens_off - 0.5, 0])
+    cube([3, 0.5, sensor_lens_cutout_to_chip]);
+}
+
 module sensor() {
     translate([-sensor_w / 2, -sensor_l / 2, 0])
     difference() {
@@ -258,13 +296,18 @@ module sensor() {
     translate([-sensor_pin_d / 2 + x, -sensor_pin_w / 2, -sensor_chip_h + sensor_pin_off_top])
     cube([sensor_pin_d, sensor_pin_w, sensor_pin_h]);
     
-    color("cyan")
-    translate([0, -sensor_l / 2 + sensor_cut_off_y + sensor_cut_h - sensor_cut_edge_to_pin1 - sensor_pin1_to_optical_center, -sensor_chip_h + 1])
-    cylinder(d = 0.2, h = sensor_ball_to_chip_bottom - 1);
+    translate([0, -sensor_l / 2 + sensor_cut_off_y + sensor_cut_h - sensor_cut_edge_to_pin1 - sensor_pin1_to_optical_center, 0]) {
+        color("cyan")
+        translate([0, 0, -sensor_chip_h + 1])
+        cylinder(d = 0.2, h = sensor_ball_to_chip_bottom - 1);
+        
+        %color("blue")
+        sensor_lens_cutout();
+    }
 }
 module ball_and_roller() {
     color("red")
-    sphere(d = ball_dia, $fn = 200);
+    sphere(d = ball_dia, $fn = $fn * 2);
     
     for (r = [0 : roller_count - 1])
     rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
@@ -275,44 +318,43 @@ module ball_and_roller() {
 }
 
 module roller_holder() {
-
-    echo(roller_h);
     translate([0, 0, -roller_h + roller_dia / 2])
     difference() {
         color("magenta")
         union() {
             // top screw part
             translate([0, 0,  roller_h-roller_dia/2 + roller_ball_h_off-3])
-                cylinder(d1 = roller_mount_dia, d2=roller_dia+1,  h = 3);
-            cylinder(d = roller_mount_dia, h = roller_h-roller_dia/2 + roller_ball_h_off-3);
+            cylinder(d1 = roller_mount_dia, d2=roller_dia+1,  h = 3);
             
+            cylinder(d = roller_mount_dia, h = roller_h-roller_dia/2 + roller_ball_h_off-3);
         }
         
-        translate([0, 0, -$e]) {
-            cylinder(d = roller_thread_hole, h = $e+ roller_h - roller_dia / 2 + roller_ball_h_off + roller_ball_hold_off);
-        }
+        translate([0, 0, -$e])
+        cylinder(d = roller_thread_hole, h = $e+ roller_h - roller_dia / 2 + roller_ball_h_off + roller_ball_hold_off);
     
         translate([0, 0, roller_h - roller_dia / 2])
-            sphere(d = roller_dia , $fn=$fn*4 );
+        sphere(d = roller_dia, $fn = $fn * 2);
 
-        
-        if (cut_roller_holder) {
-            translate([-roller_thread_dia / 2 - 1, -roller_thread_dia, -1])
-                cube([roller_thread_dia + 2, roller_thread_dia, roller_h + 2]);
-        }
+        if (cut_roller_holder)
+        translate([-roller_thread_dia / 2 - 1, -roller_thread_dia, -1])
+        cube([roller_thread_dia + 2, roller_thread_dia, roller_h + 2]);
     }
     
     %color("blue")
-    sphere(d = roller_dia);
+    sphere(d = roller_dia, $fn = $fn * 2);
 }
 
 module roller_mount() {
-    echo(roller_h);
     translate([0, 0, -1-roller_h + roller_dia / 2]) {
         difference() {
             cylinder(d=roller_mount_dia+wall,h=roller_h/2);
-            translate([0,0,1])
+            
+            translate([0, 0, 1])
             cylinder(d=roller_mount_dia+$c*2,h=roller_h/2+$e);
+
+            if (cut_roller_holder)
+            translate([-roller_thread_dia / 2 - 1, -roller_thread_dia, -1])
+            cube([roller_thread_dia + 2, roller_thread_dia, roller_h + 2]);
         }
     }
 }
@@ -322,61 +364,102 @@ module roller_mount_test() {
     roller_mount();
 }
 
-module roller_mount_tri() {
+roller_mount_holder_gap = 0.8;
+sensor_pcb_mount_gap = 2.0;
 
-difference() {
-    union(){
-        difference() {
-             hull() {
-                translate([0, 0, 0])
+sensor_pcb_support_h = 1.6 + 3.4;
+
+module roller_mount_tri() {
+    %ball_and_roller();
+    
+    difference() {
+        union() {
+            difference() {
+                hull() {
+                    for (r = [0 : roller_count - 1])
+                    rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
+                    translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
+                    rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
+                    translate([0, 0, -roller_h])
+                    cylinder(d = roller_mount_dia + wall + 1, h = roller_h - 3);
+                    
+                    translate([0, 0, -ball_dia / 2 - 11])
+                    cylinder(d = base_dia, h = $e);
+                }
+            
                 for (r = [0 : roller_count - 1])
                 rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
                 translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
                 rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
                 translate([0, 0, -roller_h])
-                cylinder(d=roller_mount_dia+wall+1,h=roller_h+1);
+                cylinder(d = roller_mount_dia + roller_mount_holder_gap, h = ball_dia / 2 + roller_h);
                 
-                translate([0,0,-ball_dia/2-5])
-                cylinder(d=base_dia,h=$e);
+                sphere($fn = $fn * 2, d = ball_dia + $c * 2 + 4);
             }
-            
-            for (r = [0 : roller_count - 1])
-            rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
-            translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
-            rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
-            translate([0, 0, -roller_h])
-            cylinder(d=roller_mount_dia+0.2,h=ball_dia/2+roller_h);
-            
-            sphere($fn=$fn*4, d=ball_dia+$c*2+1);
-            
         }
-        for (r = [0 : roller_count - 1])
-        rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
-        translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
-        rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
-        translate([0, 0, 0])
-        roller_mount();
-    }
         
-        translate([0, 0, 0])
         for (r = [0 : roller_count - 1])
         rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
         translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
         rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
         translate([0, 0, -roller_h/2])
         rotate([0,-90,0])
-        translate([0,0,2])
-        {
-        cylinder(d=m2_thread,h=ball_dia);
-            translate([0,0,roller_mount_dia/4+wall])
-        cylinder(d=m2_thread+1,h=ball_dia);
-        }
-}
-    
+        translate([-2, 0, 2]) {
+            cylinder(d = m2_thread, h = ball_dia);
             
+            translate([0, 0, roller_mount_dia / 4 + wall])
+            cylinder(d = m2_thread + 1, h = ball_dia);
+        }
+        
+        translate([0, 0, -ball_dia / 2 - ball_h])
+        translate([0, sensor_l / 2 - sensor_cut_off_y - sensor_cut_h + sensor_cut_edge_to_pin1 + sensor_pin1_to_optical_center, ball_h + sensor_chip_h - sensor_ball_to_chip_bottom])
+        translate([0, -sensor_l / 2 + sensor_cut_off_y + sensor_cut_h - sensor_cut_edge_to_pin1 - sensor_pin1_to_optical_center, 0])
+        sensor_lens_cutout();
+        
+        translate([-1, -1, -ball_dia / 2 - ball_h])
+        translate([0, sensor_l / 2 - sensor_cut_off_y - sensor_cut_h + sensor_cut_edge_to_pin1 + sensor_pin1_to_optical_center, ball_h + sensor_chip_h - sensor_ball_to_chip_bottom])
+        translate([-sensor_w / 2, -sensor_l / 2, -10])
+        cube([sensor_w + 2, sensor_l + 2, sensor_pcb_h + 10 + sensor_pcb_mount_gap]);
+        
+        // TODO test cable cutout
+        translate([-6, 0, -30.1])
+        cube([12, 50, 2]);
+        
+        if (cut_roller_holder)
+        translate([0, -base_dia / 2 - 1, -40])
+        cube([base_dia / 2 + 1, base_dia + 2, 40]);
+    }
+    
+    translate([-sensor_w / 2, -sensor_l / 2, sensor_pcb_h])
+    translate([0, 0, -ball_dia / 2 - ball_h])
+    translate([0, sensor_l / 2 - sensor_cut_off_y - sensor_cut_h + sensor_cut_edge_to_pin1 + sensor_pin1_to_optical_center, ball_h + sensor_chip_h - sensor_ball_to_chip_bottom])
+    for (x = [0, sensor_hole_dist_x])
+    for (y = [0, sensor_hole_dist_y])
+    translate([sensor_hole_off_x + x, sensor_hole_off_y + y, 0])
+    difference() {
+        union() {
+            color("magenta")
+            cylinder(d = sensor_hole_dia + 1.5, h = sensor_pcb_mount_gap);
+            
+            color("black")
+            translate([0, 0, -sensor_pcb_support_h])
+            cylinder(d = sensor_hole_dia + 0.5, h = sensor_pcb_support_h);
+        }
+        
+        cylinder(d = sensor_hole_dia - 0.2, h = sensor_pcb_mount_gap + 1);
+    }
+    
+    color("black")
+    for (x = [-5, 0, 5])
+    for (y = [-8, 0, 6.5])
+    if (((x == 0) && (y != 0)) || ((x != 0) && (y == 0)))
+    translate([x, y + 2, -30])
+    cylinder(d = sensor_hole_dia + 0.5, h = 8.5);
+        
+    %translate([0, 0, -ball_dia / 2 - ball_h])
+    translate([0, sensor_l / 2 - sensor_cut_off_y - sensor_cut_h + sensor_cut_edge_to_pin1 + sensor_pin1_to_optical_center, ball_h + sensor_chip_h - sensor_ball_to_chip_bottom])
+    sensor();
 }
-
-base_dia = pico_l + 9;
 
 module trackball() {
     %translate([0, 0, ball_dia / 2 + ball_h])
@@ -394,12 +477,9 @@ module trackball() {
     translate([sphere_r_at_h(roller_ball_h - ball_dia / 2, ball_dia / 2), 0, -ball_dia / 2 + roller_ball_h])
     rotate([0, 180 + sphere_angle_at_rh(roller_ball_h - ball_dia / 2, ball_dia / 2), 0])
     translate([0, 0, -roller_dia / 2])
-    translate([0, 0, -roller_h + roller_dia / 2 - roller_ball_h_off])
     roller_mount();
     
     color("grey")
     translate([0, 0, -8])
     cylinder(d = base_dia, h = wall);
 }
-
-

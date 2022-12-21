@@ -5,7 +5,14 @@
 #ifndef __PMW3360_H__
 #define __PMW3360_H__
 
+struct pmw_motion {
+    bool motion;
+    int32_t delta_x;
+    int32_t delta_y;
+};
+
 int pmw_init(void);
+struct pmw_motion pmw_get(void);
 
 /*
  * 0x00: 100 cpi (minimum cpi)
