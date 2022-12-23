@@ -23,6 +23,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "util.h"
 #include "pmw3360_registers.h"
 #include "pmw3360_srom.h"
 #include "pmw3360.h"
@@ -357,6 +358,9 @@ int pmw_init(void) {
     // Set sensitivity for each axis
     pmw_write_register(REG_CONFIG2, pmw_read_register(REG_CONFIG2) | 0x04);
     pmw_set_sensitivity(0x31); // default: 5000cpi
+
+    // Set lift-detection threshold to 3mm (max)
+    pmw_write_register(REG_LIFT_CONFIG, 0x03);
 
     // setup MOTION pin interrupt to handle reading data
     gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);

@@ -13,5 +13,6 @@ int32_t convert_two_complement(int32_t b);
 bool str_startswith(const char *str, const char *start);
 
 void reset_to_bootloader(void);
+void reset_to_main(void);
 
 #endif // __UTIL_H__

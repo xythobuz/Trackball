@@ -5,6 +5,7 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "pico/bootrom.h"
+#include "hardware/watchdog.h"
 
 #include "config.h"
 #include "util.h"
@@ -54,4 +55,12 @@ void reset_to_bootloader(void) {
 #else // ! PICO_DEFAULT_LED_PIN
     reset_usb_boot(0, 0);
 #endif // PICO_DEFAULT_LED_PIN
+}
+
+void reset_to_main(void) {
+    watchdog_enable(1, 1);
+    while (1) {
+        // wait 1ms until watchdog kills us
+        asm volatile("nop");
+    }
 }

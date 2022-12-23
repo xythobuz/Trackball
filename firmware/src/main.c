@@ -21,6 +21,7 @@ int main(void) {
     while (1) {
         heartbeat_run();
         usb_run();
+        cnsl_run();
     }
 
     return 0;

@@ -12,6 +12,7 @@ struct pmw_motion {
 };
 
 int pmw_init(void);
+
 struct pmw_motion pmw_get(void);
 
 /*
