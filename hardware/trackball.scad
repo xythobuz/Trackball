@@ -54,7 +54,7 @@ roller_mount_tri();
 ball_dia = 38.0;
 roller_dia = 3.0;
 
-roller_ball_h = 8;
+roller_ball_h = ball_dia / 2 - 5;
 roller_count = 3;
 
 wall = 3.0;
@@ -62,6 +62,7 @@ $c = 0.1;
 $e = 0.01;
 
 cut_roller_holder = false;
+draw_supports = false;
 
 // #######################
 // ## Raspberry Pi Pico ##
@@ -124,8 +125,8 @@ sensor_lens_cutout_growth = 0.25;
 sensor_lens_cutout_to_chip = 6.71 - 1.60;
 sensor_lens_baseplate_h = 2.40;
 
-sensor_lens_d = 19.0;
-sensor_lens_w = 21.35;
+sensor_lens_d = 19.0 + 1.0;
+sensor_lens_w = 21.35 + 0.2;
 sensor_lens_off = 10.97;
 
 // ######################
@@ -441,6 +442,7 @@ module roller_mount_tri() {
             color("magenta")
             cylinder(d = sensor_hole_dia + 1.5, h = sensor_pcb_mount_gap);
             
+            if (draw_supports)
             color("black")
             translate([0, 0, -sensor_pcb_support_h])
             cylinder(d = sensor_hole_dia + 0.5, h = sensor_pcb_support_h);
@@ -449,6 +451,7 @@ module roller_mount_tri() {
         cylinder(d = sensor_hole_dia - 0.2, h = sensor_pcb_mount_gap + 1);
     }
     
+    if (draw_supports)
     color("black")
     for (x = [-5, 0, 5])
     for (y = [-8, 0, 6.5])
