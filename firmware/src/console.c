@@ -13,6 +13,9 @@
 #include "console.h"
 
 #define CNSL_BUFF_SIZE 1024
+#define CNSL_REPEAT_MS 500
+
+//#define CNSL_REPEAT_PMW_STATUS_BY_DEFAULT
 
 static char cnsl_line_buff[CNSL_BUFF_SIZE + 1];
 static uint32_t cnsl_buff_pos = 0;
@@ -25,10 +28,12 @@ static uint32_t last_repeat_time = 0;
 
 static void cnsl_interpret(const char *line) {
     if (strlen(line) == 0) {
-        // repeat last command once
-        print("repeating command \"%s\"", cnsl_last_command);
-        cnsl_interpret(cnsl_last_command);
-        print();
+        if ((strlen(cnsl_last_command) > 0) && (strcmp(cnsl_last_command, "repeat") != 0)) {
+            // repeat last command once
+            print("repeating command \"%s\"", cnsl_last_command);
+            cnsl_interpret(cnsl_last_command);
+            print();
+        }
         return;
     } else if (strcmp(line, "repeat") == 0) {
         if (!repeat_command) {
@@ -50,7 +55,7 @@ static void cnsl_interpret(const char *line) {
         print("   pmwr - reset PMW3360");
         print("  reset - reset back into this firmware");
         print("   \\x18 - reset to bootloader");
-        print(" repeat - repeat last command once per second");
+        print(" repeat - repeat last command every %d milliseconds", CNSL_REPEAT_MS);
         print("   help - print this message");
         print("Press Enter with no input to repeat last command.");
         print("Use repeat to continuously execute last command.");
@@ -75,8 +80,7 @@ static void cnsl_interpret(const char *line) {
         if ((num < 100) || (num > 12000)) {
             print("invalid cpi %llu, needs to be %u <= cpi <= %u", num, 100, 12000);
         } else {
-            num /= 100;
-            num -= 1;
+            num = PMW_CPI_TO_SENSE(num);
             print("setting cpi to 0x%02llX", num);
             pmw_set_sensitivity(num);
         }
@@ -92,9 +96,16 @@ static void cnsl_interpret(const char *line) {
 
 void cnsl_init(void) {
     cnsl_buff_pos = 0;
-    for (int i = 0; i < sizeof(cnsl_line_buff); i++) {
+    for (int i = 0; i < CNSL_BUFF_SIZE + 1; i++) {
         cnsl_line_buff[i] = '\0';
+        cnsl_last_command[i] = '\0';
+        cnsl_repeated_command[i] = '\0';
     }
+
+#ifdef CNSL_REPEAT_PMW_STATUS_BY_DEFAULT
+    strcpy(cnsl_repeated_command, "pmws");
+    repeat_command = true;
+#endif // CNSL_REPEAT_PMW_STATUS_BY_DEFAULT
 }
 
 static int32_t cnsl_find_line_end(void) {
@@ -107,15 +118,21 @@ static int32_t cnsl_find_line_end(void) {
 }
 
 void cnsl_run(void) {
-    if (repeat_command) {
+    if (repeat_command && (strlen(cnsl_repeated_command) > 0)
+            && (strcmp(cnsl_repeated_command, "repeat") != 0)) {
         uint32_t now = to_ms_since_boot(get_absolute_time());
-        if (now >= (last_repeat_time + 1000)) {
+        if (now >= (last_repeat_time + CNSL_REPEAT_MS)) {
             print("repeating command \"%s\"", cnsl_repeated_command);
             cnsl_interpret(cnsl_repeated_command);
             print();
 
             last_repeat_time = now;
         }
+    } else {
+        if (repeat_command) {
+            print("nothing to repeat");
+        }
+        repeat_command = false;
     }
 }
 

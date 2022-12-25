@@ -12,6 +12,7 @@ struct pmw_motion {
 };
 
 int pmw_init(void);
+bool pmw_is_alive(void);
 
 struct pmw_motion pmw_get(void);
 
@@ -27,6 +28,7 @@ struct pmw_motion pmw_get(void);
 void pmw_set_sensitivity(uint8_t sens);
 uint8_t pmw_get_sensitivity(void);
 #define PMW_SENSE_TO_CPI(sense) (100 + (sense * 100))
+#define PMW_CPI_TO_SENSE(cpi) ((cpi / 100) - 1)
 
 void pmw_print_status(void);
 

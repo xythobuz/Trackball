@@ -60,7 +60,9 @@ static void send_hid_report(uint8_t report_id, uint32_t btn) {
             struct pmw_motion mouse = pmw_get();
             if (mouse.motion) {
                 tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00,
-                        -mouse.delta_x, -mouse.delta_y, 0, 0);
+                        mouse.delta_x * (INVERT_MOUSE_X_AXIS ? -1 : 1),
+                        mouse.delta_y * (INVERT_MOUSE_Y_AXIS ? -1 : 1),
+                        0, 0);
             }
         }
         break;

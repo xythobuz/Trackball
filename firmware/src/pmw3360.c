@@ -68,14 +68,14 @@ struct pmw_motion pmw_get(void) {
     r.delta_y = 0;
 
     if (r.motion) {
-        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, false);
+        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, false);
 
         r.delta_x = delta_x;
         r.delta_y = delta_y;
         delta_x = 0;
         delta_y = 0;
 
-        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, true);
+        gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, true);
     }
 
     return r;
@@ -288,8 +288,8 @@ static void pmw_handle_interrupt(void) {
 }
 
 static void pmw_motion_irq(void) {
-    if (gpio_get_irq_event_mask(PMW_MOTION_PIN) & GPIO_IRQ_EDGE_FALL) {
-        gpio_acknowledge_irq(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL);
+    if (gpio_get_irq_event_mask(PMW_MOTION_PIN) & GPIO_IRQ_LEVEL_LOW) {
+        gpio_acknowledge_irq(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW);
         pmw_handle_interrupt();
     }
 }
@@ -314,7 +314,37 @@ uint8_t pmw_get_sensitivity(void) {
     return sense_y;
 }
 
+static void pmw_irq_init(void) {
+    // setup MOTION pin interrupt to handle reading data
+    gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, true);
+    irq_set_enabled(IO_IRQ_BANK0, true);
+
+    // make MOTION pin available to picotool
+    bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
+}
+
+static void pmw_irq_stop(void) {
+    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, false);
+    irq_set_enabled(IO_IRQ_BANK0, false);
+}
+
+bool pmw_is_alive(void) {
+    bool r = true;
+    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, false);
+
+    uint8_t prod_id = pmw_read_register(REG_PRODUCT_ID);
+    uint8_t inv_prod_id = pmw_read_register(REG_INVERSE_PRODUCT_ID);
+    if (prod_id != ((~inv_prod_id) & 0xFF)) {
+        r = false;
+    }
+
+    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, true);
+    return r;
+}
+
 int pmw_init(void) {
+    pmw_irq_stop();
     pmw_spi_init();
 
     uint8_t srom_id = pmw_power_up();
@@ -357,18 +387,12 @@ int pmw_init(void) {
 
     // Set sensitivity for each axis
     pmw_write_register(REG_CONFIG2, pmw_read_register(REG_CONFIG2) | 0x04);
-    pmw_set_sensitivity(0x31); // default: 5000cpi
+    pmw_set_sensitivity(DEFAULT_MOUSE_SENSITIVITY);
 
     // Set lift-detection threshold to 3mm (max)
     pmw_write_register(REG_LIFT_CONFIG, 0x03);
 
-    // setup MOTION pin interrupt to handle reading data
-    gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
-    gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_EDGE_FALL, true);
-    irq_set_enabled(IO_IRQ_BANK0, true);
-
-    // make MOTION pin available to picotool
-    bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
+    pmw_irq_init();
 
     return 0;
 }
