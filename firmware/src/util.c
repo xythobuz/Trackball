@@ -8,6 +8,7 @@
 #include "hardware/watchdog.h"
 
 #include "config.h"
+#include "log.h"
 #include "util.h"
 
 #define HEARTBEAT_INTERVAL_MS 500
@@ -62,5 +63,17 @@ void reset_to_main(void) {
     while (1) {
         // wait 1ms until watchdog kills us
         asm volatile("nop");
+    }
+}
+
+void hexdump(uint8_t *buff, size_t len) {
+    for (size_t i = 0; i < len; i += 16) {
+        for (size_t j = 0; (j < 16) && ((i + j) < len); j++) {
+            print("0x%02X", buff[i + j]);
+            if ((j < 15) && ((i + j) < (len - 1))) {
+                print(" ");
+            }
+        }
+        println();
     }
 }

@@ -12,9 +12,6 @@
 #include "usb.h"
 #include "pmw3360.h"
 
-#define HEALTH_CHECK_INTERVAL_MS 500
-static uint32_t last_health_check = 0;
-
 int main(void) {
     heartbeat_init();
 
@@ -41,15 +38,7 @@ int main(void) {
         heartbeat_run();
         usb_run();
         cnsl_run();
-
-        uint32_t now = to_ms_since_boot(get_absolute_time());
-        if (now >= (last_health_check + HEALTH_CHECK_INTERVAL_MS)) {
-            last_health_check = now;
-            if (!pmw_is_alive()) {
-                debug("PMW3360 is dead. resetting!");
-                while (1) { }
-            }
-        }
+        pmw_run();
     }
 
     return 0;

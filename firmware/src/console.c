@@ -30,9 +30,9 @@ static void cnsl_interpret(const char *line) {
     if (strlen(line) == 0) {
         if ((strlen(cnsl_last_command) > 0) && (strcmp(cnsl_last_command, "repeat") != 0)) {
             // repeat last command once
-            print("repeating command \"%s\"", cnsl_last_command);
+            println("repeating command \"%s\"", cnsl_last_command);
             cnsl_interpret(cnsl_last_command);
-            print();
+            println();
         }
         return;
     } else if (strcmp(line, "repeat") == 0) {
@@ -48,50 +48,66 @@ static void cnsl_interpret(const char *line) {
     } else if ((strcmp(line, "help") == 0)
             || (strcmp(line, "h") == 0)
             || (strcmp(line, "?") == 0)) {
-        print("Trackball Firmware Usage:");
-        print("    cpi - print current sensitivity");
-        print("  cpi N - set sensitivity");
-        print("   pmws - print PMW3360 status");
-        print("   pmwr - reset PMW3360");
-        print("  reset - reset back into this firmware");
-        print("   \\x18 - reset to bootloader");
-        print(" repeat - repeat last command every %d milliseconds", CNSL_REPEAT_MS);
-        print("   help - print this message");
-        print("Press Enter with no input to repeat last command.");
-        print("Use repeat to continuously execute last command.");
-        print("Stop this by calling repeat again.");
+        println("Trackball Firmware Usage:");
+        println("    cpi - print current sensitivity");
+        println("  cpi N - set sensitivity");
+        println("   pmws - print PMW3360 status");
+        println("   pmwf - print PMW3360 frame capture");
+        println("   pmwd - print PMW3360 data dump");
+        println("   pmwr - reset PMW3360");
+        println("  reset - reset back into this firmware");
+        println("   \\x18 - reset to bootloader");
+        println(" repeat - repeat last command every %d milliseconds", CNSL_REPEAT_MS);
+        println("   help - print this message");
+        println("Press Enter with no input to repeat last command.");
+        println("Use repeat to continuously execute last command.");
+        println("Stop this by calling repeat again.");
     } else if (strcmp(line, "pmws") == 0) {
         pmw_print_status();
+    } else if (strcmp(line, "pmwd") == 0) {
+        pmw_dump_data();
+    } else if (strcmp(line, "pmwf") == 0) {
+        uint8_t frame[PMW_FRAME_CAPTURE_LEN];
+        ssize_t r = pmw_frame_capture(frame, PMW_FRAME_CAPTURE_LEN);
+        if (r == PMW_FRAME_CAPTURE_LEN) {
+            println("PMW3360 frame capture:");
+            hexdump(frame, PMW_FRAME_CAPTURE_LEN);
+
+            println("Re-Initializing PMW3360");
+            pmw_init();
+        } else {
+            println("error capturing frame (%d)", r);
+        }
     } else if (strcmp(line, "pmwr") == 0) {
-        print("user requests re-initializing of PMW3360");
+        println("user requests re-initializing of PMW3360");
         int r = pmw_init();
         if (r < 0) {
-            print("error initializing PMW3360");
+            println("error initializing PMW3360");
         } else {
-            print("PMW3360 re-initialized successfully");
+            println("PMW3360 re-initialized successfully");
         }
     } else if (strcmp(line, "cpi") == 0) {
         uint8_t sense = pmw_get_sensitivity();
         uint16_t cpi = PMW_SENSE_TO_CPI(sense);
-        print("current cpi: %u (0x%02X)", cpi, sense);
+        println("current cpi: %u (0x%02X)", cpi, sense);
     } else if (str_startswith(line, "cpi ")) {
         const char *num_str = line + 4;
         uintmax_t num = strtoumax(num_str, NULL, 10);
         if ((num < 100) || (num > 12000)) {
-            print("invalid cpi %llu, needs to be %u <= cpi <= %u", num, 100, 12000);
+            println("invalid cpi %llu, needs to be %u <= cpi <= %u", num, 100, 12000);
         } else {
             num = PMW_CPI_TO_SENSE(num);
-            print("setting cpi to 0x%02llX", num);
+            println("setting cpi to 0x%02llX", num);
             pmw_set_sensitivity(num);
         }
     } else if (strcmp(line, "reset") == 0) {
         reset_to_main();
     } else {
-        print("unknown command \"%s\"", line);
+        println("unknown command \"%s\"", line);
         return;
     }
 
-    print();
+    println();
 }
 
 void cnsl_init(void) {
@@ -122,15 +138,15 @@ void cnsl_run(void) {
             && (strcmp(cnsl_repeated_command, "repeat") != 0)) {
         uint32_t now = to_ms_since_boot(get_absolute_time());
         if (now >= (last_repeat_time + CNSL_REPEAT_MS)) {
-            print("repeating command \"%s\"", cnsl_repeated_command);
+            println("repeating command \"%s\"", cnsl_repeated_command);
             cnsl_interpret(cnsl_repeated_command);
-            print();
+            println();
 
             last_repeat_time = now;
         }
     } else {
         if (repeat_command) {
-            print("nothing to repeat");
+            println("nothing to repeat");
         }
         repeat_command = false;
     }

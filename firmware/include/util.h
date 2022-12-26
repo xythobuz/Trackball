@@ -15,4 +15,6 @@ bool str_startswith(const char *str, const char *start);
 void reset_to_bootloader(void);
 void reset_to_main(void);
 
+void hexdump(uint8_t *buff, size_t len);
+
 #endif // __UTIL_H__

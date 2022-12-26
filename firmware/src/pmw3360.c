@@ -20,6 +20,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/spi.h"
+#include "hardware/watchdog.h"
 
 #include "config.h"
 #include "log.h"
@@ -28,12 +29,15 @@
 #include "pmw3360_srom.h"
 #include "pmw3360.h"
 
+#define HEALTH_CHECK_INTERVAL_MS 1000
+
 #if !defined(spi_default) || !defined(PICO_DEFAULT_SPI_SCK_PIN) || !defined(PICO_DEFAULT_SPI_TX_PIN) || !defined(PICO_DEFAULT_SPI_RX_PIN) || !defined(PICO_DEFAULT_SPI_CSN_PIN)
 #error PMW3360 API requires a board with SPI pins
 #endif
 
 static volatile int32_t delta_x = 0, delta_y = 0;
 static volatile bool mouse_motion = false;
+static uint32_t last_health_check = 0;
 
 #ifdef PMW_IRQ_COUNTERS
 static uint64_t pmw_irq_count_all = 0;
@@ -48,16 +52,24 @@ static uint64_t pmw_irq_count_rest3 = 0;
 #endif // PMW_IRQ_COUNTERS
 
 void pmw_print_status(void) {
+    bool com = pmw_is_alive();
+    if (com) {
+        println("Communication to PMW3360 is working");
+    } else {
+        println("ERROR: can not communicate to PMW3360");
+    }
+
 #ifdef PMW_IRQ_COUNTERS
-    print("    pmw_irq_cnt_all = %llu", pmw_irq_count_all);
-    print(" pmw_irq_cnt_motion = %llu", pmw_irq_count_motion);
-    print("pmw_irq_cnt_no_move = %llu", pmw_irq_count_no_motion);
-    print("pmw_irq_cnt_surface = %llu", pmw_irq_count_on_surface);
-    print(" pmw_irq_cnt_lifted = %llu", pmw_irq_count_lifted);
-    print("    pmw_irq_cnt_run = %llu", pmw_irq_count_run);
-    print("  pmw_irq_cnt_rest1 = %llu", pmw_irq_count_rest1);
-    print("  pmw_irq_cnt_rest2 = %llu", pmw_irq_count_rest2);
-    print("  pmw_irq_cnt_rest3 = %llu", pmw_irq_count_rest3);
+    println("Interrupt statistics:");
+    println("    pmw_irq_cnt_all = %llu", pmw_irq_count_all);
+    println(" pmw_irq_cnt_motion = %llu", pmw_irq_count_motion);
+    println("pmw_irq_cnt_no_move = %llu", pmw_irq_count_no_motion);
+    println("pmw_irq_cnt_surface = %llu", pmw_irq_count_on_surface);
+    println(" pmw_irq_cnt_lifted = %llu", pmw_irq_count_lifted);
+    println("    pmw_irq_cnt_run = %llu", pmw_irq_count_run);
+    println("  pmw_irq_cnt_rest1 = %llu", pmw_irq_count_rest1);
+    println("  pmw_irq_cnt_rest2 = %llu", pmw_irq_count_rest2);
+    println("  pmw_irq_cnt_rest3 = %llu", pmw_irq_count_rest3);
 #endif // PMW_IRQ_COUNTERS
 }
 
@@ -314,19 +326,22 @@ uint8_t pmw_get_sensitivity(void) {
     return sense_y;
 }
 
-static void pmw_irq_init(void) {
-    // setup MOTION pin interrupt to handle reading data
-    gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+static void pmw_irq_start(void) {
     gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, true);
-    irq_set_enabled(IO_IRQ_BANK0, true);
-
-    // make MOTION pin available to picotool
-    bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
 }
 
 static void pmw_irq_stop(void) {
     gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, false);
-    irq_set_enabled(IO_IRQ_BANK0, false);
+}
+
+static void pmw_irq_init(void) {
+    // setup MOTION pin interrupt to handle reading data
+    gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+    pmw_irq_start();
+    irq_set_enabled(IO_IRQ_BANK0, true);
+
+    // make MOTION pin available to picotool
+    bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
 }
 
 bool pmw_is_alive(void) {
@@ -343,12 +358,84 @@ bool pmw_is_alive(void) {
     return r;
 }
 
+ssize_t pmw_frame_capture(uint8_t *buff, size_t buffsize) {
+    if ((buffsize < PMW_FRAME_CAPTURE_LEN) || (buff == NULL)) {
+        debug("invalid or too small buffer (%u < %u)", buffsize, PMW_FRAME_CAPTURE_LEN);
+        return -1;
+    }
+
+    pmw_irq_stop();
+
+    // write 0 to Rest_En bit of Config2 register to disable Rest mode
+    pmw_write_register(REG_CONFIG2, 0x00);
+
+    // write 0x83 to Frame_Capture register
+    pmw_write_register(REG_FRAME_CAPTURE, 0x83);
+
+    // write 0xC5 to Frame_Capture register
+    pmw_write_register(REG_FRAME_CAPTURE, 0xC5);
+
+    // wait for 20ms
+    busy_wait_ms(20);
+
+    // continue burst read from Raw_data_Burst register until all 1296 raw data are transferred
+    pmw_read_register_burst(REG_RAW_DATA_BURST, buff, PMW_FRAME_CAPTURE_LEN);
+
+    return PMW_FRAME_CAPTURE_LEN;
+}
+
+#define PMW_DATA_DUMP_SAMPLES 5000
+
+void pmw_dump_data(void) {
+    struct pmw_motion_report buff[PMW_DATA_DUMP_SAMPLES];
+
+    println("Will now capture %u data samples from PMW3360", PMW_DATA_DUMP_SAMPLES);
+    println("Move trackball to generate some data!");
+
+    pmw_irq_stop();
+
+    for (size_t i = 0; i < PMW_DATA_DUMP_SAMPLES; i++) {
+        // wait until MOTION pin is set
+        while (gpio_get(PMW_MOTION_PIN)) {
+            watchdog_update();
+        }
+
+        buff[i] = pmw_motion_read();
+    }
+
+    println();
+    println("time,motion,observation,delta_x,delta_y,squal,raw_sum,raw_max,raw_min,shutter");
+    for (size_t i = 0; i < PMW_DATA_DUMP_SAMPLES; i++) {
+        watchdog_update();
+
+        uint16_t delta_x_raw = buff[i].delta_x_l | (buff[i].delta_x_h << 8);
+        uint16_t delta_y_raw = buff[i].delta_y_l | (buff[i].delta_y_h << 8);
+        uint16_t shutter_raw = buff[i].shutter_lower | (buff[i].shutter_upper << 8);
+
+        print("%llu,", to_us_since_boot(get_absolute_time()));
+        print("%u,", buff[i].motion);
+        print("%u,", buff[i].observation);
+        print("%ld,", convert_two_complement(delta_x_raw));
+        print("%ld,", convert_two_complement(delta_y_raw));
+        print("%u,", buff[i].squal);
+        print("%u,", buff[i].raw_data_sum);
+        print("%u,", buff[i].maximum_raw_data);
+        print("%u,", buff[i].minimum_raw_data);
+        println("%u", shutter_raw);
+    }
+    println();
+
+    pmw_irq_start();
+}
+
 int pmw_init(void) {
+    // initializing takes a while (~160ms)
+    watchdog_update();
+
     pmw_irq_stop();
     pmw_spi_init();
 
     uint8_t srom_id = pmw_power_up();
-
     uint8_t prod_id = pmw_read_register(REG_PRODUCT_ID);
     uint8_t inv_prod_id = pmw_read_register(REG_INVERSE_PRODUCT_ID);
     uint16_t srom_checksum = pmw_srom_checksum();
@@ -368,13 +455,16 @@ int pmw_init(void) {
         return -1;
     }
 
-    if (srom_id != pmw_fw_id) {
-        debug("PMW3360 error: invalid SROM ID (0x%02X != 0x%02X)", srom_id, pmw_fw_id);
-        return -1;
-    }
+    if ((srom_id != pmw_fw_id) || (srom_checksum != pmw_fw_crc)) {
+        if (srom_id != pmw_fw_id) {
+            debug("PMW3360 error: invalid SROM ID (0x%02X != 0x%02X)", srom_id, pmw_fw_id);
+        }
 
-    if (srom_checksum != pmw_fw_crc) {
-        debug("PMW3360 error: invalid SROM CRC (0x%04X != 0x%04X)", srom_checksum, pmw_fw_crc);
+        if (srom_checksum != pmw_fw_crc) {
+            debug("PMW3360 error: invalid SROM CRC (0x%04X != 0x%04X)", srom_checksum, pmw_fw_crc);
+        }
+
+        debug("this may require a power-cycle to fix!");
         return -1;
     }
 
@@ -395,4 +485,15 @@ int pmw_init(void) {
     pmw_irq_init();
 
     return 0;
+}
+
+void pmw_run(void) {
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    if (now >= (last_health_check + HEALTH_CHECK_INTERVAL_MS)) {
+        last_health_check = now;
+        if (!pmw_is_alive()) {
+            debug("PMW3360 is dead. resetting!");
+            reset_to_main();
+        }
+    }
 }

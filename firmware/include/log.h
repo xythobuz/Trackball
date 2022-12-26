@@ -14,7 +14,8 @@
         ##__VA_ARGS__)
 
 // for interactive output. is not stored or re-played.
-#define print(fmt, ...) debug_log(false, fmt "\r\n", ##__VA_ARGS__)
+#define print(fmt, ...) debug_log(false, fmt, ##__VA_ARGS__)
+#define println(fmt, ...) debug_log(false, fmt "\r\n", ##__VA_ARGS__)
 
 void debug_log(bool log, const char *format, ...) __attribute__((format(printf, 2, 3)));
 void log_dump_to_usb(void);

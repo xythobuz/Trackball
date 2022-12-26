@@ -5,6 +5,8 @@
 #ifndef __PMW3360_H__
 #define __PMW3360_H__
 
+#include <sys/types.h>
+
 struct pmw_motion {
     bool motion;
     int32_t delta_x;
@@ -12,6 +14,7 @@ struct pmw_motion {
 };
 
 int pmw_init(void);
+void pmw_run(void);
 bool pmw_is_alive(void);
 
 struct pmw_motion pmw_get(void);
@@ -31,5 +34,9 @@ uint8_t pmw_get_sensitivity(void);
 #define PMW_CPI_TO_SENSE(cpi) ((cpi / 100) - 1)
 
 void pmw_print_status(void);
+void pmw_dump_data(void);
+
+ssize_t pmw_frame_capture(uint8_t *buff, size_t buffsize);
+#define PMW_FRAME_CAPTURE_LEN 1296
 
 #endif // __PMW3360_H__
