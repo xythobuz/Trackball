@@ -163,7 +163,7 @@ void cnsl_init(void) {
 }
 
 static int32_t cnsl_find_line_end(void) {
-    for (int32_t i = 0; i < cnsl_buff_pos; i++) {
+    for (uint32_t i = 0; i < cnsl_buff_pos; i++) {
         if ((cnsl_line_buff[i] == '\r') || (cnsl_line_buff[i] == '\n')) {
             return i;
         }

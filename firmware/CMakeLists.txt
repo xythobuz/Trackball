@@ -58,6 +58,7 @@ target_include_directories(trackball PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/fatfs)
 
 target_compile_options(trackball PUBLIC
     -Wall
+    -Wextra
     -Werror
 )
 

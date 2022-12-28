@@ -91,7 +91,7 @@ static void debug_msc_pmw3360_frame(void) {
     } else {
         UINT bw;
         res = f_write(&file, frame, r, &bw);
-        if ((res != FR_OK) || (bw != r)) {
+        if ((res != FR_OK) || ((ssize_t)bw != r)) {
             debug("error: f_write returned %d", res);
         }
     }

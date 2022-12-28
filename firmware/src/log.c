@@ -38,7 +38,7 @@ void log_dump_to_usb(void) {
 
     char buff[32];
     int l = snprintf(buff, sizeof(buff), "\r\n\r\nbuffered log output:\r\n");
-    if ((l > 0) && (l <= sizeof(buff))) {
+    if ((l > 0) && (l <= (int)sizeof(buff))) {
         usb_cdc_write(buff, l);
     }
 
@@ -50,7 +50,7 @@ void log_dump_to_usb(void) {
     }
 
     l = snprintf(buff, sizeof(buff), "\r\n\r\nlive log:\r\n");
-    if ((l > 0) && (l <= sizeof(buff))) {
+    if ((l > 0) && (l <= (int)sizeof(buff))) {
         usb_cdc_write(buff, l);
     }
 }
@@ -94,7 +94,7 @@ static int format_debug_log(char *buff, size_t len, const char *format, va_list 
     if (l < 0) {
         // encoding error
         l = snprintf(buff, len, "%s: encoding error\r\n", __func__);
-    } else if (l >= len) {
+    } else if (l >= (ssize_t)len) {
         // not enough space for string
         l = snprintf(buff, len, "%s: message too long (%d)\r\n", __func__, l);
     }
@@ -110,7 +110,7 @@ void debug_log(bool log, const char* format, ...) {
     int l = format_debug_log(line_buff, sizeof(line_buff), format, args);
     va_end(args);
 
-    if ((l > 0) && (l <= sizeof(line_buff))) {
+    if ((l > 0) && (l <= (int)sizeof(line_buff))) {
         usb_cdc_write(line_buff, l);
 
         if (log) {
