@@ -11,6 +11,7 @@
 #include "log.h"
 #include "usb.h"
 #include "pmw3360.h"
+#include "fat_disk.h"
 
 int main(void) {
     heartbeat_init();
@@ -22,6 +23,10 @@ int main(void) {
         debug("reset by watchdog");
     }
 
+    debug("fat_disk_init");
+    fat_disk_init();
+
+    debug("pmw_init");
     if (pmw_init() != 0) {
         debug("error initializing PMW3360");
     }

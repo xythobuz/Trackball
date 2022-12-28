@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "ff.h"
 
 #include "config.h"
 #include "usb_cdc.h"
@@ -51,6 +52,39 @@ void log_dump_to_usb(void) {
     l = snprintf(buff, sizeof(buff), "\r\n\r\nlive log:\r\n");
     if ((l > 0) && (l <= sizeof(buff))) {
         usb_cdc_write(buff, l);
+    }
+}
+
+void log_dump_to_disk(void) {
+    FIL file;
+    FRESULT res = f_open(&file, "log.txt", FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK) {
+        debug("error: f_open returned %d", res);
+        return;
+    }
+
+    UINT bw;
+
+    if (head > tail) {
+        res = f_write(&file, log_buff + tail, head - tail, &bw);
+        if ((res != FR_OK) || (bw != head - tail)) {
+            debug("error: f_write (A) returned %d", res);
+        }
+    } else if (head < tail) {
+        res = f_write(&file, log_buff + tail, sizeof(log_buff) - tail, &bw);
+        if ((res != FR_OK) || (bw != sizeof(log_buff) - tail)) {
+            debug("error: f_write (B) returned %d", res);
+        } else {
+            res = f_write(&file, log_buff, head, &bw);
+            if ((res != FR_OK) || (bw != head)) {
+                debug("error: f_write (C) returned %d", res);
+            }
+        }
+    }
+
+    res = f_close(&file);
+    if (res != FR_OK) {
+        debug("error: f_close returned %d", res);
     }
 }
 

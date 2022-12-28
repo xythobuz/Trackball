@@ -110,15 +110,18 @@ enum {
     ITF_NUM_CDC = 0,
     ITF_NUM_CDC_DATA,
     ITF_NUM_HID,
+    ITF_NUM_MSC,
     ITF_NUM_TOTAL
 };
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN)
+#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN + TUD_MSC_DESC_LEN)
 
 #define EPNUM_HID       0x81
 #define EPNUM_CDC_NOTIF 0x82
 #define EPNUM_CDC_OUT   0x02
 #define EPNUM_CDC_IN    0x83
+#define EPNUM_MSC_OUT   0x03
+#define EPNUM_MSC_IN    0x84
 
 uint8_t const desc_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
@@ -128,7 +131,10 @@ uint8_t const desc_configuration[] = {
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5)
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5),
+
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 6, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 };
 
 #if TUD_OPT_HIGH_SPEED
@@ -203,6 +209,8 @@ char const* string_desc_arr [] = {
     "Trackball",                   // 2: Product
     string_pico_serial,            // 3: Serials, should use chip ID
     "Debug Serial",                // 4: CDC Interface
+    "Input Device",                // 5: HID Interface
+    "Debug Memory",                // 6: MSC Interface
 };
 
 static uint16_t _desc_str[32];

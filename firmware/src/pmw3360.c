@@ -17,10 +17,12 @@
  * The Pico GPIO (and therefore SPI) cannot be used at 5v.
  */
 
+#include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/spi.h"
 #include "hardware/watchdog.h"
+#include "ff.h"
 
 #include "config.h"
 #include "log.h"
@@ -51,25 +53,27 @@ static uint64_t pmw_irq_count_rest2 = 0;
 static uint64_t pmw_irq_count_rest3 = 0;
 #endif // PMW_IRQ_COUNTERS
 
-void pmw_print_status(void) {
+void pmw_print_status(char *buff, size_t len) {
+    size_t pos = 0;
+
     bool com = pmw_is_alive();
     if (com) {
-        println("Communication to PMW3360 is working");
+        pos += snprintf(buff + pos, len - pos, "Communication to PMW3360 is working\r\n");
     } else {
-        println("ERROR: can not communicate to PMW3360");
+        pos += snprintf(buff + pos, len - pos, "ERROR: can not communicate to PMW3360\r\n");
     }
 
 #ifdef PMW_IRQ_COUNTERS
-    println("Interrupt statistics:");
-    println("    pmw_irq_cnt_all = %llu", pmw_irq_count_all);
-    println(" pmw_irq_cnt_motion = %llu", pmw_irq_count_motion);
-    println("pmw_irq_cnt_no_move = %llu", pmw_irq_count_no_motion);
-    println("pmw_irq_cnt_surface = %llu", pmw_irq_count_on_surface);
-    println(" pmw_irq_cnt_lifted = %llu", pmw_irq_count_lifted);
-    println("    pmw_irq_cnt_run = %llu", pmw_irq_count_run);
-    println("  pmw_irq_cnt_rest1 = %llu", pmw_irq_count_rest1);
-    println("  pmw_irq_cnt_rest2 = %llu", pmw_irq_count_rest2);
-    println("  pmw_irq_cnt_rest3 = %llu", pmw_irq_count_rest3);
+    pos += snprintf(buff + pos, len - pos, "Interrupt statistics:\r\n");
+    pos += snprintf(buff + pos, len - pos, "    pmw_irq_cnt_all = %llu\r\n", pmw_irq_count_all);
+    pos += snprintf(buff + pos, len - pos, " pmw_irq_cnt_motion = %llu\r\n", pmw_irq_count_motion);
+    pos += snprintf(buff + pos, len - pos, "pmw_irq_cnt_no_move = %llu\r\n", pmw_irq_count_no_motion);
+    pos += snprintf(buff + pos, len - pos, "pmw_irq_cnt_surface = %llu\r\n", pmw_irq_count_on_surface);
+    pos += snprintf(buff + pos, len - pos, " pmw_irq_cnt_lifted = %llu\r\n", pmw_irq_count_lifted);
+    pos += snprintf(buff + pos, len - pos, "    pmw_irq_cnt_run = %llu\r\n", pmw_irq_count_run);
+    pos += snprintf(buff + pos, len - pos, "  pmw_irq_cnt_rest1 = %llu\r\n", pmw_irq_count_rest1);
+    pos += snprintf(buff + pos, len - pos, "  pmw_irq_cnt_rest2 = %llu\r\n", pmw_irq_count_rest2);
+    pos += snprintf(buff + pos, len - pos, "  pmw_irq_cnt_rest3 = %llu\r\n", pmw_irq_count_rest3);
 #endif // PMW_IRQ_COUNTERS
 }
 
@@ -384,9 +388,29 @@ ssize_t pmw_frame_capture(uint8_t *buff, size_t buffsize) {
     return PMW_FRAME_CAPTURE_LEN;
 }
 
-#define PMW_DATA_DUMP_SAMPLES 5000
+#define PMW_DATA_DUMP_SAMPLES 1000
 
-void pmw_dump_data(void) {
+#define PRINTRAW(fmt, ...) {                             \
+    if (serial) {                                        \
+        print(fmt, ##__VA_ARGS__);                       \
+    } else {                                             \
+        int n = snprintf(line, 100, fmt, ##__VA_ARGS__); \
+        UINT bw;                                         \
+        f_write(&file, line, n, &bw);                    \
+    }                                                    \
+}
+
+void pmw_dump_data(bool serial) {
+    char line[100];
+    FIL file;
+    if (!serial) {
+        FRESULT res = f_open(&file, "pmw_data.csv", FA_CREATE_ALWAYS | FA_WRITE);
+        if (res != FR_OK) {
+            debug("error: f_open returned %d", res);
+            return;
+        }
+    }
+
     struct pmw_motion_report buff[PMW_DATA_DUMP_SAMPLES];
 
     println("Will now capture %u data samples from PMW3360", PMW_DATA_DUMP_SAMPLES);
@@ -403,8 +427,14 @@ void pmw_dump_data(void) {
         buff[i] = pmw_motion_read();
     }
 
-    println();
-    println("time,motion,observation,delta_x,delta_y,squal,raw_sum,raw_max,raw_min,shutter");
+    if (serial) {
+        println();
+    } else {
+        println("Now writing data");
+    }
+
+    PRINTRAW("time,motion,observation,delta_x,delta_y,squal,raw_sum,raw_max,raw_min,shutter\r\n");
+
     for (size_t i = 0; i < PMW_DATA_DUMP_SAMPLES; i++) {
         watchdog_update();
 
@@ -412,20 +442,30 @@ void pmw_dump_data(void) {
         uint16_t delta_y_raw = buff[i].delta_y_l | (buff[i].delta_y_h << 8);
         uint16_t shutter_raw = buff[i].shutter_lower | (buff[i].shutter_upper << 8);
 
-        print("%llu,", to_us_since_boot(get_absolute_time()));
-        print("%u,", buff[i].motion);
-        print("%u,", buff[i].observation);
-        print("%ld,", convert_two_complement(delta_x_raw));
-        print("%ld,", convert_two_complement(delta_y_raw));
-        print("%u,", buff[i].squal);
-        print("%u,", buff[i].raw_data_sum);
-        print("%u,", buff[i].maximum_raw_data);
-        print("%u,", buff[i].minimum_raw_data);
-        println("%u", shutter_raw);
+        PRINTRAW("%llu,", to_us_since_boot(get_absolute_time()));
+        PRINTRAW("%u,", buff[i].motion);
+        PRINTRAW("%u,", buff[i].observation);
+        PRINTRAW("%ld,", convert_two_complement(delta_x_raw));
+        PRINTRAW("%ld,", convert_two_complement(delta_y_raw));
+        PRINTRAW("%u,", buff[i].squal);
+        PRINTRAW("%u,", buff[i].raw_data_sum);
+        PRINTRAW("%u,", buff[i].maximum_raw_data);
+        PRINTRAW("%u,", buff[i].minimum_raw_data);
+        PRINTRAW("%u\r\n", shutter_raw);
     }
-    println();
+
+    if (serial) {
+        println();
+    }
 
     pmw_irq_start();
+
+    if (!serial) {
+        FRESULT res = f_close(&file);
+        if (res != FR_OK) {
+            debug("error: f_close returned %d", res);
+        }
+    }
 }
 
 int pmw_init(void) {

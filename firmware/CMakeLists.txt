@@ -9,6 +9,28 @@ project(trackball)
 # initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+# copy FatFS source files to build dir, so we can use our own ffconf.h
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ff.c
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ff.c
+    COPYONLY
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ff.h
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ff.h
+    COPYONLY
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/diskio.h
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/diskio.h
+    COPYONLY
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffunicode.c
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ffunicode.c
+    COPYONLY
+)
+
 add_executable(trackball)
 
 target_sources(trackball PUBLIC
@@ -21,10 +43,18 @@ target_sources(trackball PUBLIC
     src/usb_cdc.c
     src/usb_descriptors.c
     src/usb_hid.c
+    src/usb_msc.c
+    src/fat_disk.c
+    src/debug.c
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ff.c
+    ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ffunicode.c
 )
 
 # Make sure TinyUSB can find tusb_config.h
 target_include_directories(trackball PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+
+# Make sure FatFS can find ffconf.h
+target_include_directories(trackball PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/fatfs)
 
 target_compile_options(trackball PUBLIC
     -Wall

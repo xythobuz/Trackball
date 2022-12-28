@@ -10,6 +10,8 @@
 #include "log.h"
 #include "pmw3360.h"
 #include "util.h"
+#include "usb_msc.h"
+#include "debug.h"
 #include "console.h"
 
 #define CNSL_BUFF_SIZE 1024
@@ -59,13 +61,18 @@ static void cnsl_interpret(const char *line) {
         println("   \\x18 - reset to bootloader");
         println(" repeat - repeat last command every %d milliseconds", CNSL_REPEAT_MS);
         println("   help - print this message");
+        println("  stats - put statistics on mass storage medium");
+        println("   data - put PMW3360 data on mass storage medium");
+        println("  mount - make mass storage medium (un)available");
         println("Press Enter with no input to repeat last command.");
         println("Use repeat to continuously execute last command.");
         println("Stop this by calling repeat again.");
     } else if (strcmp(line, "pmws") == 0) {
-        pmw_print_status();
+        char status_buff[1024];
+        pmw_print_status(status_buff, sizeof(status_buff));
+        print("%s", status_buff);
     } else if (strcmp(line, "pmwd") == 0) {
-        pmw_dump_data();
+        pmw_dump_data(true);
     } else if (strcmp(line, "pmwf") == 0) {
         uint8_t frame[PMW_FRAME_CAPTURE_LEN];
         ssize_t r = pmw_frame_capture(frame, PMW_FRAME_CAPTURE_LEN);
@@ -102,9 +109,40 @@ static void cnsl_interpret(const char *line) {
         }
     } else if (strcmp(line, "reset") == 0) {
         reset_to_main();
+    } else if ((strcmp(line, "stats") == 0) || (strcmp(line, "data") == 0)) {
+        if (msc_is_medium_available()) {
+            println("Currently mounted. Unplugging now.");
+            msc_set_medium_available(false);
+        }
+
+        if (debug_msc_mount() != 0) {
+            println("Error mounting file system.");
+            println();
+            return;
+        }
+
+        println("Writing data to file system");
+
+        if (strcmp(line, "data") == 0) {
+            debug_msc_pmw3360();
+        }
+
+        debug_msc_stats();
+
+        if (debug_msc_unmount() != 0) {
+            println("Error unmounting file system.");
+        }
+
+        println("Done. Plugging in now.");
+        msc_set_medium_available(true);
+    } else if (strcmp(line, "mount") == 0) {
+        bool state = msc_is_medium_available();
+        println("Currently %s. %s now.",
+                state ? "mounted" : "unmounted",
+                state ? "Unplugging" : "Plugging in");
+        msc_set_medium_available(!state);
     } else {
         println("unknown command \"%s\"", line);
-        return;
     }
 
     println();

@@ -18,6 +18,8 @@
 #define println(fmt, ...) debug_log(false, fmt "\r\n", ##__VA_ARGS__)
 
 void debug_log(bool log, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
 void log_dump_to_usb(void);
+void log_dump_to_disk(void);
 
 #endif // __LOG_H__

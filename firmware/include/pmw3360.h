@@ -33,8 +33,8 @@ uint8_t pmw_get_sensitivity(void);
 #define PMW_SENSE_TO_CPI(sense) (100 + (sense * 100))
 #define PMW_CPI_TO_SENSE(cpi) ((cpi / 100) - 1)
 
-void pmw_print_status(void);
-void pmw_dump_data(void);
+void pmw_print_status(char *buff, size_t len);
+void pmw_dump_data(bool serial);
 
 ssize_t pmw_frame_capture(uint8_t *buff, size_t buffsize);
 #define PMW_FRAME_CAPTURE_LEN 1296
