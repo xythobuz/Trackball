@@ -1,6 +1,8 @@
 /* 
- * The MIT License (MIT)
+ * Extended from TinyUSB example code.
+ * Copyright (c) 2022 Thomas Buck (thomas@xythobuz.de)
  *
+ * The MIT License (MIT)
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,7 +22,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
  */
 
 #include "bsp/board.h"
@@ -63,13 +64,12 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
 // Invoked when received Test Unit Ready command.
 // return true allowing host to read/write this LUN e.g SD card inserted
 bool tud_msc_test_unit_ready_cb(uint8_t lun) {
-    if (ejected || !medium_available) {
+    if (!medium_available) {
         // Additional Sense 3A-00 is NOT_FOUND
         tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
-        return false;
     }
 
-    return true;
+    return medium_available;
 }
 
 // Invoked when received SCSI_CMD_READ_CAPACITY_10 and
@@ -78,8 +78,13 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun) {
 void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size) {
     (void) lun;
 
-    *block_count = DISK_BLOCK_COUNT;
-    *block_size  = DISK_BLOCK_SIZE;
+    if (!medium_available) {
+        *block_count = 0;
+        *block_size = 0;
+    } else {
+        *block_count = DISK_BLOCK_COUNT;
+        *block_size  = DISK_BLOCK_SIZE;
+    }
 }
 
 // Invoked when received Start Stop Unit command
@@ -96,7 +101,9 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition,
     } else {
         // unload disk storage
         debug("unload disk storage %d", load_eject);
-        ejected = true;
+        if (load_eject) {
+            medium_available = false;
+        }
     }
 
     return true;
@@ -158,6 +165,28 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16],
     bool in_xfer = true;
 
     switch (scsi_cmd[0]) {
+    case 0x1E:
+        // Prevent/Allow Medium Removal
+        if (scsi_cmd[4] & 0x01) {
+            // Prevent medium removal
+            if (!medium_available) {
+                debug("Host wants to lock non-existing medium. Not supported.");
+                resplen = -1;
+            } else {
+                debug("Host wants to lock medium.");
+            }
+        } else {
+            // Allow medium removal
+            if (medium_available) {
+                debug("Host ejected medium. Unplugging disk.");
+                medium_available = false;
+            } else {
+                debug("host ejected non-existing medium. Not supported.");
+                resplen = -1;
+            }
+        }
+        break;
+
     default:
         // Set Sense = Invalid Command Operation
         tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);

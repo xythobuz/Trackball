@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "pico/stdlib.h"
 #include "ff.h"
@@ -11,6 +12,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "debug.h"
 #include "fat_disk.h"
 
 static uint8_t disk[DISK_BLOCK_COUNT * DISK_BLOCK_SIZE];
@@ -21,6 +23,44 @@ void fat_disk_init(void) {
     if (res != FR_OK) {
         debug("error: f_mkfs returned %d", res);
         return;
+    }
+
+    if (debug_msc_mount() != 0) {
+        debug("error mounting disk");
+        return;
+    }
+
+    // maximum length: 11 bytes
+    f_setlabel("DEBUG DISK");
+
+    FIL file;
+    res = f_open(&file, "README.md", FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK) {
+        debug("error: f_open returned %d", res);
+    } else {
+        char readme[1024];
+        size_t pos = 0;
+        pos += snprintf(readme + pos, 1024 - pos, "# Trackball\r\n");
+        pos += snprintf(readme + pos, 1024 - pos, "\r\n");
+        pos += snprintf(readme + pos, 1024 - pos, "Project by Thomas Buck <thomas@xythobuz.de>\r\n");
+        pos += snprintf(readme + pos, 1024 - pos, "Licensed under GPLv3.\r\n");
+        pos += snprintf(readme + pos, 1024 - pos, "Source at https://git.xythobuz.de/thomas/Trackball\r\n");
+
+        size_t len = strlen(readme);
+        UINT bw;
+        res = f_write(&file, readme, len, &bw);
+        if ((res != FR_OK) || (bw != len)) {
+            debug("error: f_write returned %d", res);
+        }
+
+        res = f_close(&file);
+        if (res != FR_OK) {
+            debug("error: f_close returned %d", res);
+        }
+    }
+
+    if (debug_msc_unmount() != 0) {
+        debug("error unmounting disk");
     }
 }
 

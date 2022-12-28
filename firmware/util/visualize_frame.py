@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import math
+import os
 
 if len(sys.argv) < 2:
     print("Usage:")
@@ -20,12 +21,19 @@ for n in range(0, len(sys.argv) - 1):
     print("reading " + sys.argv[n + 1])
 
     frame = []
-    with open(sys.argv[n + 1]) as f:
-        lines = f.readlines()
-        for line in lines:
-            nums = line.split()
-            for r in nums:
-                frame.append(int(r, 16))
+    if os.path.getsize(sys.argv[n + 1]) == 1296:
+        print("binary file format detected. parsing.")
+        with open(sys.argv[n + 1], "rb") as f:
+            while (byte := f.read(1)):
+                frame.append(int.from_bytes(byte, "big"))
+    else:
+        print("text file format detected. parsing.")
+        with open(sys.argv[n + 1]) as f:
+            lines = f.readlines()
+            for line in lines:
+                nums = line.split()
+                for r in nums:
+                    frame.append(int(r, 16))
 
     print("frame length: " + str(len(frame)))
     row_len = math.sqrt(len(frame))
