@@ -339,10 +339,16 @@ static void pmw_irq_stop(void) {
 }
 
 static void pmw_irq_init(void) {
-    // setup MOTION pin interrupt to handle reading data
-    gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+    static bool first_init = false;
+
+    if (!first_init) {
+        // setup MOTION pin interrupt to handle reading data
+        gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
+        irq_set_enabled(IO_IRQ_BANK0, true);
+	first_init = true;
+    }
+
     pmw_irq_start();
-    irq_set_enabled(IO_IRQ_BANK0, true);
 
     // make MOTION pin available to picotool
     bi_decl(bi_1pin_with_name(PMW_MOTION_PIN, "PMW3360 MOTION"));
