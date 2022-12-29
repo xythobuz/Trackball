@@ -190,30 +190,13 @@ roller_mount_holder_gap = 0.8;
 sensor_pcb_mount_gap = 2.0;
 
 sensor_pcb_support_h = 1.6 + 3.4;
-
-sw1_rot_x = -5;
-sw1_rot_z = -30 * (left_hand_version ? -1 : 1);
-sw1_trans_x = 0;
-sw1_trans_y = -base_dia / 2 - 0;
-sw1_trans_z = -17;
-
-sw2_rot_x = -5;
-sw2_rot_z = 15 * (left_hand_version ? -1 : 1);
-sw2_trans_x = 0;
-sw2_trans_y = -base_dia / 2 - 0;
-sw2_trans_z = -17;
-
-sw3_rot_x = -5;
-sw3_rot_z = 125 * (left_hand_version ? -1 : 1);
-sw3_trans_x = 0;
-sw3_trans_y = -base_dia / 2 - 0;
-sw3_trans_z = -17;
-
-sw4_rot_x = -5;
-sw4_rot_z = -125 * (left_hand_version ? -1 : 1);
-sw4_trans_x = 0;
-sw4_trans_y = -base_dia / 2 - 0;
-sw4_trans_z = -17;
+//         rotate                                     translate
+sw = [
+        [ [-5,0, -30 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
+        [ [-5,0,  15 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
+        [ [-5,0, 125 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
+        [ [-5,0,-125 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
+    ];
 
 sw_mount_w = mx_co_w + 7;
 sw_mount_co_l = 10;
@@ -574,30 +557,13 @@ module trackball_top() {
             color("orange")
             hull() {
                 roller_mount_tri_hull();
-                
-                rotate([0, 0, sw1_rot_z])
-                translate([sw1_trans_x, sw1_trans_y, sw1_trans_z])
-                rotate([90 + sw1_rot_x, 0, 0])
-                translate([0, 0, -0.5])
-                cube([sw_mount_w, sw_mount_w, 1], center = true);
-                
-                rotate([0, 0, sw2_rot_z])
-                translate([sw2_trans_x, sw2_trans_y, sw2_trans_z])
-                rotate([90 + sw2_rot_x, 0, 0])
-                translate([0, 0, -0.5])
-                cube([sw_mount_w, sw_mount_w, 1], center = true);
-                
-                rotate([0, 0, sw3_rot_z])
-                translate([sw3_trans_x, sw3_trans_y, sw3_trans_z])
-                rotate([90 + sw3_rot_x, 0, 0])
-                translate([0, 0, -0.5])
-                cube([sw_mount_w, sw_mount_w, 1], center = true);
-                
-                rotate([0, 0, sw4_rot_z])
-                translate([sw4_trans_x, sw4_trans_y, sw4_trans_z])
-                rotate([90 + sw4_rot_x, 0, 0])
-                translate([0, 0, -0.5])
-                cube([sw_mount_w, sw_mount_w, 1], center = true);
+                for ( i = [0:len(sw)-1] ){
+                    rotate([0,sw[i][0][1],sw[i][0][2]])
+                    translate(sw[i][1])
+                    rotate([90+sw[i][0][0],0,0])
+                    translate([0, 0, -0.5])
+                    cube([sw_mount_w, sw_mount_w, 1], center = true);
+                }
             }
             
             roller_mount_tri_body();
@@ -606,65 +572,19 @@ module trackball_top() {
             translate([0, -base_dia / 2 - 1, -40])
             cube([base_dia / 2 + 1, base_dia + 2, 40]);
             
-            rotate([0, 0, sw1_rot_z])
-            translate([sw1_trans_x, sw1_trans_y, sw1_trans_z])
-            rotate([90 + sw1_rot_x, 0, 0])
-            translate([0, 0, -sw_mount_co_l]) {
-                mx_switch_cutout(sw_mount_co_l + 1);
-                
-                translate([0, 0, 2])
-                rotate([90, 0, 0])
-                cylinder(d = 4, h = 20);
-            }
             
-            rotate([0, 0, sw2_rot_z])
-            translate([sw2_trans_x, sw2_trans_y, sw2_trans_z])
-            rotate([90 + sw2_rot_x, 0, 0])
-            translate([0, 0, -sw_mount_co_l]) {
-                mx_switch_cutout(sw_mount_co_l + 1);
-                
-                translate([0, 0, 2])
-                rotate([90, 0, 0])
-                cylinder(d = 4, h = 20);
+            for ( i = [0:len(sw)-1] ){
+                rotate([0,sw[i][0][1],sw[i][0][2]])
+                translate(sw[i][1])
+                rotate([90+sw[i][0][0],0,0])
+                translate([0, 0, -sw_mount_co_l]) {
+                    mx_switch_cutout(sw_mount_co_l + 1);
+                    
+                    translate([0, 0, 2])
+                    rotate([90, 0, 0])
+                    cylinder(d = 4, h = 20);
+                }
             }
-            
-            rotate([0, 0, sw3_rot_z])
-            translate([sw3_trans_x, sw3_trans_y, sw3_trans_z])
-            rotate([90 + sw3_rot_x, 0, 0])
-            translate([0, 0, -sw_mount_co_l]) {
-                mx_switch_cutout(sw_mount_co_l + 1);
-                
-                translate([0, 0, 2])
-                rotate([90, 0, 0])
-                cylinder(d = 4, h = 20);
-            }
-            
-            rotate([0, 0, sw4_rot_z])
-            translate([sw4_trans_x, sw4_trans_y, sw4_trans_z])
-            rotate([90 + sw4_rot_x, 0, 0])
-            translate([0, 0, -sw_mount_co_l]) {
-                mx_switch_cutout(sw_mount_co_l + 1);
-                
-                translate([0, 0, 2])
-                rotate([90, 0, 0])
-                cylinder(d = 4, h = 20);
-            }
-            
-            /*
-            hull() {
-                rotate([0, 0, sw1_rot_z])
-                translate([sw1_trans_x, sw1_trans_y, sw1_trans_z])
-                rotate([90 + sw1_rot_x, 0, 0])
-                translate([0, 0, -sw_mount_co_l + 5])
-                mx_switch_cutout(sw_mount_co_l - 10);
-                
-                rotate([0, 0, sw2_rot_z])
-                translate([sw2_trans_x, sw2_trans_y, sw2_trans_z])
-                rotate([90 + sw2_rot_x, 0, 0])
-                translate([0, 0, -sw_mount_co_l + 5])
-                mx_switch_cutout(sw_mount_co_l - 10);
-            }
-            */
             
         
             for (r = screw_angles)
@@ -676,25 +596,12 @@ module trackball_top() {
         
         roller_mount_sensor_pcb_support();
     
-        if (draw_switches) {
-            %rotate([0, 0, sw1_rot_z])
-            translate([sw1_trans_x, sw1_trans_y, sw1_trans_z])
-            rotate([90 + sw1_rot_x, 0, 0])
-            mx_switch($t);
-        
-            %rotate([0, 0, sw2_rot_z])
-            translate([sw2_trans_x, sw2_trans_y, sw2_trans_z])
-            rotate([90 + sw2_rot_x, 0, 0])
-            mx_switch($t);
-        
-            %rotate([0, 0, sw3_rot_z])
-            translate([sw3_trans_x, sw3_trans_y, sw3_trans_z])
-            rotate([90 + sw3_rot_x, 0, 0])
-            mx_switch($t);
-        
-            %rotate([0, 0, sw4_rot_z])
-            translate([sw4_trans_x, sw4_trans_y, sw4_trans_z])
-            rotate([90 + sw4_rot_x, 0, 0])
+        if (draw_switches)
+        for ( i = [0:len(sw)-1] ){
+            rotate([0,sw[i][0][1],sw[i][0][2]])
+            translate(sw[i][1])
+            rotate([90+sw[i][0][0],0,0])
+                translate([0, 0, 1.])
             mx_switch($t);
         }
     }
