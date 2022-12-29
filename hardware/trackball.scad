@@ -48,9 +48,9 @@ use <external/pico_case.scad>
 //roller_mount_tri();
 
 //trackball_top();
-trackball_bottom();
+//trackball_bottom();
 
-//assembly();
+assembly();
 //print();
 
 // #######################
@@ -168,8 +168,8 @@ mx_travel = 3.9;
 
 base_dia = 62;
 
-m3_thread = 2.7;
-m2_thread = 1.8;
+grub_screw_dia = 2.8;
+grub_channel_dia = 4.0;
 
 roller_thread_dia = roller_dia + 5.0;
 roller_h = roller_dia + 7.0;
@@ -241,6 +241,19 @@ usb_cutout_w_add = 1;
 usb_cutout_h_add = 0.6;
 
 assembly_dist = 20;
+
+roller_holder_sider_cut = 1.5;
+roller_holder_h_compensation = -0.1;
+
+bottom_add_wall = 4;
+
+screw_dia = 3.2;
+screw_off = base_dia / 2 - 10;
+screw_head_d = 6.0;
+screw_head_h = 3.5;
+screw_angles = [ 15, -15, 180 + 15, 180 - 15 ];
+screw_insert_dia = 4.8;
+screw_insert_h = 6.0;
 
 function sphere_r_at_h(h, r) = r * sin(acos(h / r));
 function sphere_angle_at_rh(h, r) = acos(h / r);
@@ -397,17 +410,19 @@ module roller_holder() {
     difference() {
         color("magenta")
         union() {
-            // top screw part
             translate([0, 0,  roller_h-roller_dia/2 + roller_ball_h_off-3])
             cylinder(d1 = roller_mount_dia, d2=roller_dia+1,  h = 3);
             
             cylinder(d = roller_mount_dia, h = roller_h-roller_dia/2 + roller_ball_h_off-3);
         }
         
+        translate([-roller_mount_dia / 2 - 1, roller_mount_dia / 2 - roller_holder_sider_cut, -1])
+        cube([roller_mount_dia + 2, roller_mount_dia / 2 + 1, roller_h + 2]);
+        
         translate([0, 0, -$e])
         cylinder(d = roller_thread_hole, h = $e+ roller_h - roller_dia / 2 + roller_ball_h_off + roller_ball_hold_off);
     
-        translate([0, 0, roller_h - roller_dia / 2])
+        translate([0, 0, roller_h - roller_dia / 2 + roller_holder_h_compensation])
         sphere(d = roller_dia, $fn = $fn * 2);
 
         if (cut_roller_holder)
@@ -471,10 +486,10 @@ module roller_mount_tri_body() {
     translate([0, 0, -roller_h/2])
     rotate([0,-90,0])
     translate([-2, 0, 2]) {
-        cylinder(d = m2_thread, h = ball_dia);
+        cylinder(d = grub_screw_dia, h = ball_dia);
         
         translate([0, 0, roller_mount_dia / 4 + wall])
-        cylinder(d = m2_thread + 1, h = ball_dia);
+        cylinder(d = grub_channel_dia, h = ball_dia);
     }
         
     // sensor lens
@@ -685,8 +700,6 @@ module trackball_top() {
     }
 }
 
-bottom_add_wall = 4;
-
 module trackball_bottom_wrap() {
     %rotate([0, 180, 0])
     pico_wrap();
@@ -733,14 +746,6 @@ module usb_cutout() {
         cube([pico_usb_w + usb_cutout_grow_x, 1, pico_usb_h + usb_cutout_grow_y]);
     }
 }
-
-screw_dia = 3.2;
-screw_off = base_dia / 2 - 10;
-screw_head_d = 6.0;
-screw_head_h = 3.5;
-screw_angles = [ 15, -15, 180 + 15, 180 - 15 ];
-screw_insert_dia = 4.8;
-screw_insert_h = 8.0;
 
 module trackball_bottom() {
     difference() {

@@ -33,6 +33,10 @@ This will use the mass storage bootloader to upload a new uf2 image.
 For old-school debugging a serial port will be presented by the firmware.
 Open it using eg. `picocom`, or with the included `debug.sh` script.
 
+For dependencies to compile, on Arch install these.
+
+    sudo pacman -S arm-none-eabi-gcc arm-none-eabi-newlib picocom cmake
+
 ## Proper Debugging
 
 You can also use the SWD interface for proper hardware debugging.
