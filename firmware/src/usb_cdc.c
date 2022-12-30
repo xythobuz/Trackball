@@ -79,9 +79,6 @@ void cdc_task(void) {
         } else if (reroute_cdc_debug) {
             debug_handle_input(buf, count);
         } else {
-            // echo back
-            usb_cdc_write(buf, count);
-
             cnsl_handle_input(buf, count);
         }
     }

@@ -10,6 +10,7 @@
 #include "log.h"
 #include "pmw3360.h"
 #include "util.h"
+#include "usb_cdc.h"
 #include "usb_msc.h"
 #include "debug.h"
 #include "console.h"
@@ -214,6 +215,32 @@ void cnsl_handle_input(const char *buf, uint32_t len) {
     memcpy(cnsl_line_buff + cnsl_buff_pos, buf, len);
     cnsl_buff_pos += len;
 
+    // handle backspace
+    for (ssize_t i = cnsl_buff_pos - len; i < (ssize_t)cnsl_buff_pos; i++) {
+        if ((cnsl_line_buff[i] == '\b') || (cnsl_line_buff[i] == 0x7F)) {
+            if (i > 0) {
+                // overwrite previous character and backspace
+                for (ssize_t j = i; j < (ssize_t)cnsl_buff_pos - 1; j++) {
+                    cnsl_line_buff[j - 1] = cnsl_line_buff[j + 1];
+                }
+                cnsl_buff_pos -= 2;
+            } else {
+                // just remove the backspace
+                for (ssize_t j = i; j < (ssize_t)cnsl_buff_pos - 1; j++) {
+                    cnsl_line_buff[j] = cnsl_line_buff[j + 1];
+                }
+                cnsl_buff_pos -= 1;
+            }
+
+            usb_cdc_write("\b \b", 3);
+
+            // check for another backspace in this space
+            i--;
+        } else {
+            usb_cdc_write(cnsl_line_buff + i, 1);
+        }
+    }
+
     int32_t line_len = cnsl_find_line_end();
     if (line_len < 0) {
         // user has not pressed enter yet
@@ -222,8 +249,6 @@ void cnsl_handle_input(const char *buf, uint32_t len) {
 
     // convert line to C-style string
     cnsl_line_buff[line_len] = '\0';
-
-    // TODO handle backspace and other terminal commands?
 
     cnsl_interpret(cnsl_line_buff);
 
