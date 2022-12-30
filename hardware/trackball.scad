@@ -149,6 +149,8 @@ sensor_lens_off = 10.97;
 mx_co_w = 14.0;
 mx_co_w_add = 0.8;
 mx_co_h = 14.0;
+mx_co_keycap_w = mx_co_w + 2.5*2;
+mx_co_keycap_h = mx_co_h + 2.5*2;
 mx_co_h_off_1 = 1.0;
 mx_co_h_off_2 = 3.5;
 mx_co_h_off_3 = mx_co_h - 2 * (mx_co_h_off_1 + mx_co_h_off_2);
@@ -179,7 +181,7 @@ roller_thread_hole = roller_dia - 1;
 roller_small_hole = sphere_r_at_h(roller_ball_hold_off, roller_dia / 2) * 2;
 
 roller_ridge_h = 1.5;
-roller_mount_angle_off = 90;
+roller_mount_angle_off = 90-5;
 roller_mount_dia = roller_thread_dia + 2.0;
 
 ball_h = 15; // todo
@@ -191,11 +193,12 @@ sensor_pcb_mount_gap = 2.0;
 
 sensor_pcb_support_h = 1.6 + 3.4;
 //         rotate                                     translate
-sw = [
-        [ [-5,0, -30 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
-        [ [-5,0,  15 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
-        [ [-5,0, 125 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
-        [ [-5,0,-125 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-17]],
+sw = [   // x z_pre_T z_post_T
+        [ [-5,      0, -33 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 2,-14.5]],// thumb
+        [ [-5,    -15,   3 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 2,-14.5]],// thumb
+        //[ [-5,      0, -70 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 0,-14.5]],// thumb
+        [ [-5,    -15, 140 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 3,-14.5]],// middle
+        [ [-5,      0, 100 * (left_hand_version ? -1 : 1)], [0,-base_dia / 2 - 2,-14.5]],// ring
     ];
 
 sw_mount_w = mx_co_w + 7;
@@ -261,7 +264,12 @@ module mx_switch_cutout(h) {
         
         translate([mx_co_w_add - mx_co_b_add / 2, -mx_co_b_add / 2, -1])
         cube([mx_co_b_w, mx_co_b_h, h - mx_co_th + 1]);
+        
     }
+    
+    
+    translate([-mx_co_keycap_w/2,-mx_co_keycap_h/2, h])
+    cube([mx_co_keycap_w, mx_co_keycap_h, 50]);
 }
 
 module mx_switch_test() {
@@ -548,6 +556,15 @@ module roller_mount_tri() {
     roller_mount_sensor_pcb_support();
 }
 
+module fully_rounded_cube(p,r,center) {
+    for(x=[r,p[0]-r],
+        y=[r,p[1]-r],
+        z=[r,p[2]-r]
+    ){
+        translate([x,y,z])
+        sphere(r,$fn=$fn/8);
+    }
+}
 module trackball_top() {
     translate([0, 0, ball_dia / 2 + ball_h]) {
         if (draw_ball_roller)
@@ -556,13 +573,14 @@ module trackball_top() {
         difference() {
             color("orange")
             hull() {
+                r=4;
                 roller_mount_tri_hull();
                 for ( i = [0:len(sw)-1] ){
-                    rotate([0,sw[i][0][1],sw[i][0][2]])
+                    rotate([0,0,sw[i][0][2]])
                     translate(sw[i][1])
-                    rotate([90+sw[i][0][0],0,0])
-                    translate([0, 0, -0.5])
-                    cube([sw_mount_w, sw_mount_w, 1], center = true);
+                    rotate([90+sw[i][0][0],0,sw[i][0][1]])
+                    translate([-sw_mount_w/2-r, -sw_mount_w/2-r, -r-r/2])
+                    fully_rounded_cube([sw_mount_w+r*2, sw_mount_w+r*2, 0], r);
                 }
             }
             
@@ -574,9 +592,9 @@ module trackball_top() {
             
             
             for ( i = [0:len(sw)-1] ){
-                rotate([0,sw[i][0][1],sw[i][0][2]])
+                rotate([0,0,sw[i][0][2]])
                 translate(sw[i][1])
-                rotate([90+sw[i][0][0],0,0])
+                rotate([90+sw[i][0][0],0,sw[i][0][1]])
                 translate([0, 0, -sw_mount_co_l]) {
                     mx_switch_cutout(sw_mount_co_l + 1);
                     
@@ -592,16 +610,27 @@ module trackball_top() {
             translate([screw_off, 0, -ball_dia / 2 - 11 -1]) {
                 cylinder(d = screw_insert_dia, h = screw_insert_h + 1);
             }
+            
+            
+            
         }
         
         roller_mount_sensor_pcb_support();
     
         if (draw_switches)
         for ( i = [0:len(sw)-1] ){
-            rotate([0,sw[i][0][1],sw[i][0][2]])
+            rotate([0,0,sw[i][0][2]])
             translate(sw[i][1])
-            rotate([90+sw[i][0][0],0,0])
-                translate([0, 0, 1.])
+            rotate([90+sw[i][0][0],0,sw[i][0][1]])
+            translate([0, 0, 1.])
+            mx_switch($t);
+        }
+        if (draw_keycap)
+        for ( i = [0:len(sw)-1] ){
+            rotate([0,0,sw[i][0][2]])
+            translate(sw[i][1])
+            rotate([90+sw[i][0][0],0,sw[i][0][1]])
+            translate([0, 0, 1.])
             mx_switch($t);
         }
     }
