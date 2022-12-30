@@ -46,6 +46,8 @@ target_sources(trackball PUBLIC
     src/usb_msc.c
     src/fat_disk.c
     src/debug.c
+    src/buttons.c
+    src/controls.c
     ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ff.c
     ${CMAKE_CURRENT_BINARY_DIR}/fatfs/ffunicode.c
 )

@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include "pmw3360.h"
+#include "controls.h"
 #include "usb_descriptors.h"
 #include "usb_hid.h"
 
@@ -129,7 +130,7 @@ void hid_task(void) {
     if ( board_millis() - start_ms < interval_ms) return; // not enough time
     start_ms += interval_ms;
 
-    uint32_t const btn = board_button_read();
+    uint32_t const btn = controls_button_read();
 
     // Remote wakeup
     if ( tud_suspended() && btn ) {

@@ -12,9 +12,11 @@
 #include "usb.h"
 #include "pmw3360.h"
 #include "fat_disk.h"
+#include "buttons.h"
 
 int main(void) {
     heartbeat_init();
+    buttons_init();
 
     cnsl_init();
     usb_init();
@@ -33,7 +35,7 @@ int main(void) {
 
     // trigger after 500ms
     // (PMW3360 initialization takes ~160ms)
-    watchdog_enable(500, 1);
+    //watchdog_enable(500, 1);
 
     debug("init done");
 
@@ -41,6 +43,7 @@ int main(void) {
         watchdog_update();
 
         heartbeat_run();
+        buttons_run();
         usb_run();
         cnsl_run();
         pmw_run();
