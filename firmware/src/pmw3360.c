@@ -310,32 +310,59 @@ static void pmw_motion_irq(void) {
     }
 }
 
-void pmw_set_sensitivity(uint8_t sens) {
-    if (sens > 0x77) {
-        debug("invalid sense, clamping (0x%X > 0x77)", sens);
-        sens = 0x77;
-    }
-
-    pmw_write_register(REG_CONFIG1, sens);
-    pmw_write_register(REG_CONFIG5, sens);
-}
-
-uint8_t pmw_get_sensitivity(void) {
-    uint8_t sense_y = pmw_read_register(REG_CONFIG1);
-    uint8_t sense_x = pmw_read_register(REG_CONFIG5);
-    if (sense_y != sense_x) {
-        debug("sensitivity differs for x (0x%02X) and y (0x%02X). resetting.", sense_x, sense_y);
-        pmw_write_register(REG_CONFIG5, sense_y);
-    }
-    return sense_y;
-}
-
 static void pmw_irq_start(void) {
     gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, true);
 }
 
 static void pmw_irq_stop(void) {
     gpio_set_irq_enabled(PMW_MOTION_PIN, GPIO_IRQ_LEVEL_LOW, false);
+}
+
+void pmw_set_sensitivity(uint8_t sens) {
+    if (sens > 0x77) {
+        debug("invalid sense, clamping (0x%X > 0x77)", sens);
+        sens = 0x77;
+    }
+
+    pmw_irq_stop();
+
+    pmw_write_register(REG_CONFIG1, sens);
+    pmw_write_register(REG_CONFIG5, sens);
+
+    pmw_irq_start();
+}
+
+uint8_t pmw_get_sensitivity(void) {
+    pmw_irq_stop();
+
+    uint8_t sense_y = pmw_read_register(REG_CONFIG1);
+    uint8_t sense_x = pmw_read_register(REG_CONFIG5);
+    if (sense_y != sense_x) {
+        debug("sensitivity differs for x (0x%02X) and y (0x%02X). resetting.", sense_x, sense_y);
+        pmw_write_register(REG_CONFIG5, sense_y);
+    }
+
+    pmw_irq_start();
+    return sense_y;
+}
+
+void pmw_set_angle(int8_t angle) {
+    pmw_irq_stop();
+
+    uint8_t tmp = *((uint8_t *)(&angle));
+    pmw_write_register(REG_ANGLE_TUNE, tmp);
+
+    pmw_irq_start();
+}
+
+int8_t pmw_get_angle(void) {
+    pmw_irq_stop();
+
+    uint8_t tmp = pmw_read_register(REG_ANGLE_TUNE);
+    int8_t angle = *((int8_t *)(&tmp));
+
+    pmw_irq_start();
+    return angle;
 }
 
 static void pmw_irq_init(void) {
@@ -527,6 +554,8 @@ int pmw_init(void) {
 
     // Set lift-detection threshold to 3mm (max)
     pmw_write_register(REG_LIFT_CONFIG, 0x03);
+
+    pmw_set_angle(DEFAULT_MOUSE_ANGLE);
 
     pmw_irq_init();
 

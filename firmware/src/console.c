@@ -53,6 +53,8 @@ static void cnsl_interpret(const char *line) {
         println("Trackball Firmware Usage:");
         println("    cpi - print current sensitivity");
         println("  cpi N - set sensitivity");
+        println("  angle - print current angle");
+        println("angle N - set angle");
         println("   pmws - print PMW3360 status");
         println("   pmwf - print PMW3360 frame capture");
         println("   pmwd - print PMW3360 data dump");
@@ -106,6 +108,19 @@ static void cnsl_interpret(const char *line) {
             num = PMW_CPI_TO_SENSE(num);
             println("setting cpi to 0x%02llX", num);
             pmw_set_sensitivity(num);
+        }
+    } else if (strcmp(line, "angle") == 0) {
+        int8_t angle = pmw_get_angle();
+        println("current angle: %d", angle);
+    } else if (str_startswith(line, "angle ")) {
+        const char *num_str = line + 6;
+        intmax_t num = strtoimax(num_str, NULL, 10);
+        if ((num < -128) || (num > 127)) {
+            println("invalid angle %lld, needs to be %d <= cpi <= %d", num, -128, 127);
+        } else {
+            int8_t tmp = num;
+            println("setting angle to %d", tmp);
+            pmw_set_angle(num);
         }
     } else if (strcmp(line, "reset") == 0) {
         reset_to_main();

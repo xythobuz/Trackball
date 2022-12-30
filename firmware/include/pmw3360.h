@@ -33,6 +33,9 @@ uint8_t pmw_get_sensitivity(void);
 #define PMW_SENSE_TO_CPI(sense) (100 + (sense * 100))
 #define PMW_CPI_TO_SENSE(cpi) ((cpi / 100) - 1)
 
+void pmw_set_angle(int8_t angle);
+int8_t pmw_get_angle(void);
+
 void pmw_print_status(char *buff, size_t len);
 void pmw_dump_data(bool serial);
 
