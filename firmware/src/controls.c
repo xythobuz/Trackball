@@ -126,6 +126,7 @@ struct mouse_state controls_mouse_read(void) {
             mouse.button[MOUSE_MIDDLE] = true;
             mouse.fake_middle = 1;
         }
+        scroll_sum = 0;
     }
 
     if (mouse_state_changed(mouse, last_mouse)
