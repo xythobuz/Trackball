@@ -20,6 +20,7 @@ struct mouse_state {
     int16_t delta_x, delta_y;
     int16_t scroll_x, scroll_y;
     bool scroll_lock, fake_middle;
+    int16_t internal_scroll_x, internal_scroll_y;
 };
 
 void controls_init(void);

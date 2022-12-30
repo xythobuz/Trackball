@@ -76,17 +76,39 @@ struct mouse_state controls_mouse_read(void) {
         mouse.delta_y = motion.delta_y;
     }
 
+    mouse.scroll_x = 0;
+    mouse.scroll_y = 0;
+
     if (mouse.scroll_lock) {
-        mouse.scroll_x = mouse.delta_x;
-        mouse.scroll_y = mouse.delta_y;
+        scroll_sum += abs(mouse.delta_x);
+        scroll_sum += abs(mouse.delta_y);
+
+        mouse.internal_scroll_x += mouse.delta_x;
+        mouse.internal_scroll_y += mouse.delta_y;
+
         mouse.delta_x = 0;
         mouse.delta_y = 0;
 
-        scroll_sum += abs(mouse.scroll_x);
-        scroll_sum += abs(mouse.scroll_y);
+        while (mouse.internal_scroll_x > SCROLL_REDUCE_SENSITIVITY) {
+            mouse.scroll_x += 1;
+            mouse.internal_scroll_x -= SCROLL_REDUCE_SENSITIVITY;
+        }
+        while (mouse.internal_scroll_x < -SCROLL_REDUCE_SENSITIVITY) {
+            mouse.scroll_x -= 1;
+            mouse.internal_scroll_x += SCROLL_REDUCE_SENSITIVITY;
+        }
+
+        while (mouse.internal_scroll_y > SCROLL_REDUCE_SENSITIVITY) {
+            mouse.scroll_y += 1;
+            mouse.internal_scroll_y -= SCROLL_REDUCE_SENSITIVITY;
+        }
+        while (mouse.internal_scroll_y < -SCROLL_REDUCE_SENSITIVITY) {
+            mouse.scroll_y -= 1;
+            mouse.internal_scroll_y += SCROLL_REDUCE_SENSITIVITY;
+        }
     } else {
-        mouse.scroll_x = 0;
-        mouse.scroll_y = 0;
+        mouse.internal_scroll_x = 0;
+        mouse.internal_scroll_y = 0;
     }
 
     if (mouse.fake_middle) {
