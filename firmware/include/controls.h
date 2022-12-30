@@ -19,7 +19,8 @@ struct mouse_state {
     bool button[MOUSE_BUTTONS_COUNT];
     int16_t delta_x, delta_y;
     int16_t scroll_x, scroll_y;
-    bool scroll_lock, fake_middle;
+    bool scroll_lock;
+    uint16_t fake_middle;
     int16_t internal_scroll_x, internal_scroll_y;
 };
 

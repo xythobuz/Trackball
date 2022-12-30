@@ -24,7 +24,7 @@ void controls_init(void) {
     mouse.scroll_x = 0;
     mouse.scroll_y = 0;
     mouse.scroll_lock = false;
-    mouse.fake_middle = false;
+    mouse.fake_middle = 0;
 
     last_mouse = mouse;
 }
@@ -111,9 +111,12 @@ struct mouse_state controls_mouse_read(void) {
         mouse.internal_scroll_y = 0;
     }
 
-    if (mouse.fake_middle) {
-        mouse.button[MOUSE_MIDDLE] = false;
-        mouse.fake_middle = false;
+    if (mouse.fake_middle > 0) {
+        mouse.fake_middle++;
+        if (mouse.fake_middle > MOUSE_FAKE_MIDDLE_CLICK_TIME) {
+            mouse.fake_middle = 0;
+            mouse.button[MOUSE_MIDDLE] = false;
+        }
     }
 
     if (!mouse.scroll_lock && last_mouse.scroll_lock) {
@@ -121,7 +124,7 @@ struct mouse_state controls_mouse_read(void) {
         if (scroll_sum < MIN_SCROLL_SUPPRESS_CLICK) {
             // fake middle mouse click, user was not scrolling
             mouse.button[MOUSE_MIDDLE] = true;
-            mouse.fake_middle = true;
+            mouse.fake_middle = 1;
         }
     }
 
