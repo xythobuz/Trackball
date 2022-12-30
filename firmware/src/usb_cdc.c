@@ -33,6 +33,8 @@
 #include "usb_descriptors.h"
 #include "usb_cdc.h"
 
+static bool reroute_cdc_debug = false;
+
 void usb_cdc_write(const char *buf, uint32_t count) {
 #ifndef DISABLE_CDC_DTR_CHECK
     if (!tud_cdc_connected()) {
@@ -59,6 +61,10 @@ void usb_cdc_write(const char *buf, uint32_t count) {
     }
 }
 
+void usb_cdc_set_reroute(bool reroute) {
+    reroute_cdc_debug = reroute;
+}
+
 void cdc_task(void) {
     const uint32_t cdc_buf_len = 64;
 
@@ -70,6 +76,8 @@ void cdc_task(void) {
             // ASCII 0x18 = CAN (cancel)
             debug("switching to bootloader");
             reset_to_bootloader();
+        } else if (reroute_cdc_debug) {
+            debug_handle_input(buf, count);
         } else {
             // echo back
             usb_cdc_write(buf, count);

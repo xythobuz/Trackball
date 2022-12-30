@@ -345,7 +345,7 @@ static void pmw_irq_init(void) {
         // setup MOTION pin interrupt to handle reading data
         gpio_add_raw_irq_handler(PMW_MOTION_PIN, pmw_motion_irq);
         irq_set_enabled(IO_IRQ_BANK0, true);
-	first_init = true;
+        first_init = true;
     }
 
     pmw_irq_start();

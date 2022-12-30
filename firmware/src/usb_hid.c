@@ -27,7 +27,6 @@
 #include "tusb.h"
 
 #include "config.h"
-#include "pmw3360.h"
 #include "controls.h"
 #include "usb_descriptors.h"
 #include "usb_hid.h"
@@ -58,16 +57,28 @@ static void send_hid_report(uint8_t report_id, uint32_t btn) {
 
         case REPORT_ID_MOUSE:
         {
-            struct pmw_motion mouse = pmw_get();
+            struct mouse_state mouse = controls_mouse_read();
+
             uint8_t buttons = 0x00;
-            if (btn) {
+            if (mouse.button[MOUSE_LEFT]) {
                 buttons |= MOUSE_BUTTON_LEFT;
             }
-            if (mouse.motion) {
+            if (mouse.button[MOUSE_RIGHT]) {
+                buttons |= MOUSE_BUTTON_RIGHT;
+            }
+            if (mouse.button[MOUSE_MIDDLE]) {
+                buttons |= MOUSE_BUTTON_MIDDLE;
+            }
+            if (mouse.button[MOUSE_BACK]) {
+                buttons |= MOUSE_BUTTON_BACKWARD;
+            }
+
+            if (mouse.changed) {
                 tud_hid_mouse_report(REPORT_ID_MOUSE, buttons,
                         mouse.delta_x * (INVERT_MOUSE_X_AXIS ? -1 : 1),
                         mouse.delta_y * (INVERT_MOUSE_Y_AXIS ? -1 : 1),
-                        0, 0);
+                        mouse.scroll_y * (INVERT_SCROLL_Y_AXIS ? -1 : 1),
+                        mouse.scroll_x * (INVERT_SCROLL_X_AXIS ? -1 : 1));
             }
         }
         break;
@@ -130,7 +141,7 @@ void hid_task(void) {
     if ( board_millis() - start_ms < interval_ms) return; // not enough time
     start_ms += interval_ms;
 
-    uint32_t const btn = controls_button_read();
+    uint32_t const btn = 0;
 
     // Remote wakeup
     if ( tud_suspended() && btn ) {

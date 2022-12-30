@@ -4,16 +4,20 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+
 #include "pico/stdlib.h"
+#include "hardware/watchdog.h"
 #include "ff.h"
 
 #include "config.h"
+#include "usb.h"
 #include "usb_cdc.h"
 #include "log.h"
 
-char log_buff[4096];
-size_t head = 0, tail = 0;
-bool full = false;
+static char log_buff[4096];
+static size_t head = 0, tail = 0;
+static bool full = false;
+static bool got_input = false;
 
 static void add_to_log(const char *buff, int len) {
     for (int i = 0; i < len; i++) {
@@ -103,7 +107,7 @@ static int format_debug_log(char *buff, size_t len, const char *format, va_list 
 }
 
 void debug_log(bool log, const char* format, ...) {
-    static char line_buff[256];
+    static char line_buff[512];
 
     va_list args;
     va_start(args, format);
@@ -117,4 +121,35 @@ void debug_log(bool log, const char* format, ...) {
             add_to_log(line_buff, l);
         }
     }
+}
+
+void debug_handle_input(char *buff, uint32_t len) {
+    (void)buff;
+
+    if (len > 0) {
+        got_input = true;
+    }
+}
+
+void debug_wait_input(const char *format, ...) {
+    static char line_buff[512];
+
+    va_list args;
+    va_start(args, format);
+    int l = format_debug_log(line_buff, sizeof(line_buff), format, args);
+    va_end(args);
+
+    if ((l > 0) && (l <= (int)sizeof(line_buff))) {
+        usb_cdc_write(line_buff, l);
+    }
+
+    got_input = false;
+    usb_cdc_set_reroute(true);
+
+    while (!got_input) {
+        watchdog_update();
+        usb_run();
+    }
+
+    usb_cdc_set_reroute(false);
 }
