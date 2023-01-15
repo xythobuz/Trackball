@@ -38,7 +38,7 @@ use <external/pico_case.scad>
 // ######################
 
 //ball_and_roller();
-//pico_wrap();
+pico_wrap();
 //sensor();
 //mx_switch_cutout(wall);
 //mx_switch_test();
@@ -47,10 +47,10 @@ use <external/pico_case.scad>
 //roller_holder();
 //roller_mount_tri();
 
-//trackball_top();
-//trackball_bottom();
+trackball_top();
+trackball_bottom();
 
-assembly();
+//assembly();
 //print();
 
 // #######################
@@ -222,7 +222,7 @@ pico_screw_d = 1.8;
 
 usb_cutout_grow_l = 10;
 usb_cutout_grow_x = 20;
-usb_cutout_grow_y = 40;
+usb_cutout_grow_y = 10;
 usb_cutout_w_add = 1;
 usb_cutout_h_add = 0.6;
 
@@ -265,7 +265,9 @@ module mx_switch_cutout(h) {
         translate([mx_co_w_add - mx_co_b_add / 2, -mx_co_b_add / 2, -1])
         cube([mx_co_b_w, mx_co_b_h, h - mx_co_th + 1]);
         
+        
     }
+    
     
     
     translate([-mx_co_keycap_w/2,-mx_co_keycap_h/2, h])
@@ -308,11 +310,13 @@ module pico_own() {
 }
 
 module pico_wrap() {
-    //if (use_external_pico_model)
-    translate([-pico_w / 2, -pico_l / 2, 0])
-    pico();
-    //else
-    pico_own();
+    translate([0,0,3.9])
+    rotate([0,180,0])
+    if (use_external_pico_model)
+        translate([-pico_w / 2, -pico_l / 2, 0])
+        pico();
+    else
+        pico_own();
 }
 
 module sensor_lens_cutout_intern() {
@@ -386,7 +390,7 @@ module sensor() {
 }
 module ball_and_roller() {
     color("red")
-    sphere(d = ball_dia, $fn = $fn * 2);
+    sphere(d = ball_dia, $fn = $fn);
     
     for (r = [0 : roller_count - 1])
     rotate([0, 0, roller_mount_angle_off + 360 / roller_count * r])
@@ -414,7 +418,7 @@ module roller_holder() {
         cylinder(d = roller_thread_hole, h = $e+ roller_h - roller_dia / 2 + roller_ball_h_off + roller_ball_hold_off);
     
         translate([0, 0, roller_h - roller_dia / 2 + roller_holder_h_compensation])
-        sphere(d = roller_dia, $fn = $fn * 2);
+        sphere(d = roller_dia, $fn = $fn);
 
         if (cut_roller_holder)
         translate([-roller_thread_dia / 2 - 1, -roller_thread_dia, -1])
@@ -422,7 +426,7 @@ module roller_holder() {
     }
     
     %color("blue")
-    sphere(d = roller_dia, $fn = $fn * 2);
+    sphere(d = roller_dia, $fn = $fn);
 }
 
 module roller_mount() {
@@ -601,6 +605,11 @@ module trackball_top() {
                     translate([0, 0, 2])
                     rotate([90, 0, 0])
                     cylinder(d = 4, h = 20);
+                    
+                    rotate([0,-sw[i][0][1],0])
+                    translate([0,-15,3])
+                    rotate([0,180,0])
+                    cylinder(d=3,h=40);
                 }
             }
             
@@ -611,10 +620,21 @@ module trackball_top() {
                 cylinder(d = screw_insert_dia, h = screw_insert_h + 1);
             }
             
+            for (x = [0, pico_hole_d_x])
+            for (y = [0, pico_hole_d_y])
+                rotate([0,0,0])
+            translate([-pico_w / 2, -pico_l / 2, -25])
+            translate([pico_hole_x + x, pico_hole_y + y, -pico_d - pico_screw_depth])
+            cylinder(d = pico_screw_d, h = pico_d + pico_screw_depth + 1);
             
+            rotate([0, 180, 0])
+            translate([-pico_w / 2, -pico_l / 2, 0])
+            translate([(pico_w - pico_usb_w) / 2, pico_l - 1 + pico_usb_off, 30])
+            usb_cutout();
             
         }
         
+         
         roller_mount_sensor_pcb_support();
     
         if (draw_switches)
@@ -637,70 +657,64 @@ module trackball_top() {
 }
 
 module trackball_bottom_wrap() {
-    %rotate([0, 180, 0])
-    pico_wrap();
     
     color("magenta")
-    translate([0, 0, -bottom_base_below_zero])
+    translate([0, 0, -3.0])
     difference() {
-        cylinder(d = base_dia, h = bottom_base_below_zero + ball_h - 11);
+        cylinder(d = base_dia, h = bottom_base_below_zero + ball_h - 16);
         
         translate([0, 0, bottom_base_wall])
-        cylinder(d = base_dia - bottom_base_wall * 2 - bottom_add_wall, h = bottom_base_below_zero + ball_h - 11);
+        cylinder(d = base_dia - bottom_base_wall * 2 - bottom_add_wall, h = bottom_base_below_zero + ball_h - 15);
         
-        translate([-pico_co_w / 2, -pico_co_l / 2, bottom_base_wall])
+        translate([-pico_co_w / 2, -pico_co_l / 2, 2.5])
         cube([pico_co_w, pico_co_l, bottom_base_below_zero + ball_h - 11]);
         
         translate([pico_w / 2 - reset_button_off_x, pico_l / 2 - reset_button_off_y, -1])
         cylinder(d = reset_button_dia, h = bottom_base_wall + 2);
-        
-        if (cut_roller_holder)
-        translate([-base_dia / 2 - 1, -base_dia / 2 - 1, -10])
-        cube([base_dia / 2 + 1, base_dia + 2, 40]);
     }
     
     color("cyan")
-    for (x = [-1, 1])
-    for (y = [-1, 1])
-    translate([x * (pico_co_w - pico_support_w) / 2, y * (pico_co_l - pico_support_l) / 2, 0])
-    translate([-pico_support_w / 2, -pico_support_l / 2, -bottom_base_below_zero + bottom_base_wall])
-    cube([pico_support_w, pico_support_l, bottom_base_below_zero - bottom_base_wall - pico_d]);
-        
-    color("cyan")
     for (r = screw_angles)
     rotate([0, 0, r])
-    translate([screw_off, 0, -bottom_base_below_zero + bottom_base_wall])
-    cylinder(d = screw_head_d + 4, h = bottom_base_below_zero + ball_h - 11 - bottom_base_wall);
+    translate([screw_off, 0, -3])
+    cylinder(d = screw_head_d + 4, h = bottom_base_below_zero + ball_h - 16 );
 }
 
 module usb_cutout() {
-    hull() {
-        translate([-usb_cutout_w_add / 2, 0, -usb_cutout_h_add / 2])
-        cube([pico_usb_w + usb_cutout_w_add, 1, pico_usb_h + usb_cutout_h_add]);
-        
-        translate([-usb_cutout_grow_x / 2, usb_cutout_grow_l, -usb_cutout_grow_y / 2])
-        cube([pico_usb_w + usb_cutout_grow_x, 1, pico_usb_h + usb_cutout_grow_y]);
+    translate([8,1,4.5])
+    rotate([0,180,0]) {
+        translate([-usb_cutout_w_add / 2, -2, -usb_cutout_h_add / 2])
+        cube([pico_usb_w + usb_cutout_w_add, 5, pico_usb_h + usb_cutout_h_add]);
+    
+        hull() {
+            translate([-usb_cutout_w_add / 2, 1, -usb_cutout_h_add / 2])
+            cube([pico_usb_w + usb_cutout_w_add, $e, pico_usb_h + usb_cutout_h_add]);
+            
+            translate([-usb_cutout_grow_x / 2, 1+usb_cutout_grow_l, -usb_cutout_grow_y / 2])
+            cube([pico_usb_w + usb_cutout_grow_x, $e, pico_usb_h + usb_cutout_grow_y]);
+            
+            translate([-usb_cutout_grow_x / 2, 1+usb_cutout_grow_l*10, -usb_cutout_grow_y / 2])
+            cube([pico_usb_w + usb_cutout_grow_x, $e, pico_usb_h + usb_cutout_grow_y]);
+        }
     }
 }
+
+
 
 module trackball_bottom() {
     difference() {
         trackball_bottom_wrap();
         
-        for (x = [0, pico_hole_d_x])
-        for (y = [0, pico_hole_d_y])
-        translate([-pico_w / 2, -pico_l / 2, 0])
-        translate([pico_hole_x + x, pico_hole_y + y, -pico_d - pico_screw_depth])
-        cylinder(d = pico_screw_d, h = pico_d + pico_screw_depth + 1);
         
+        translate([0, 0, ball_dia / 2 + ball_h]) 
         rotate([0, 180, 0])
         translate([-pico_w / 2, -pico_l / 2, 0])
-        translate([(pico_w - pico_usb_w) / 2, pico_l - 1 + pico_usb_off, pico_d])
+        translate([(pico_w - pico_usb_w) / 2, pico_l - 1 + pico_usb_off, 30])
         usb_cutout();
         
         for (r = screw_angles)
         rotate([0, 0, r])
-        translate([screw_off, 0, -bottom_base_below_zero - 1]) {
+        translate([screw_off, 0, -$e-3]) {
             cylinder(d = screw_dia, h = bottom_base_below_zero + 30);
             cylinder(d = screw_head_d, h = screw_head_h + 1);
         }
