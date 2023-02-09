@@ -38,7 +38,7 @@ use <external/pico_case.scad>
 // ######################
 
 //ball_and_roller();
-pico_wrap();
+//pico_wrap();
 //sensor();
 //mx_switch_cutout(wall);
 //mx_switch_test();
@@ -48,7 +48,7 @@ pico_wrap();
 //roller_mount_tri();
 
 trackball_top();
-trackball_bottom();
+//trackball_bottom();
 
 //assembly();
 //print();
@@ -77,6 +77,7 @@ draw_ball_roller = true;
 draw_switches = true;
 draw_sensor = true;
 use_external_pico_model = true;
+draw_keycap = false;
 
 // #######################
 // ## Raspberry Pi Pico ##
@@ -237,6 +238,7 @@ screw_dia = 3.2;
 screw_off = base_dia / 2 - 10;
 screw_head_d = 6.0;
 screw_head_h = 3.5;
+//screw_angles = [ 30, -15, 180 + 40, 180 - 30 ];
 screw_angles = [ 15, -15, 180 + 15, 180 - 15 ];
 screw_insert_dia = 4.8;
 screw_insert_h = 6.0;
@@ -639,7 +641,7 @@ module trackball_top() {
     
         if (draw_switches)
         for ( i = [0:len(sw)-1] ){
-            rotate([0,0,sw[i][0][2]])
+            %rotate([0,0,sw[i][0][2]])
             translate(sw[i][1])
             rotate([90+sw[i][0][0],0,sw[i][0][1]])
             translate([0, 0, 1.])
@@ -647,7 +649,7 @@ module trackball_top() {
         }
         if (draw_keycap)
         for ( i = [0:len(sw)-1] ){
-            rotate([0,0,sw[i][0][2]])
+            %rotate([0,0,sw[i][0][2]])
             translate(sw[i][1])
             rotate([90+sw[i][0][0],0,sw[i][0][1]])
             translate([0, 0, 1.])
