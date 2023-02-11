@@ -1,2 +1,5 @@
 build
 build_debug
+*.stl
+*.sl1
+*.wow

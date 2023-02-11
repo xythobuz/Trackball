@@ -1,8 +1,10 @@
-/* 
+/*
  * Extended from TinyUSB example code.
- * Copyright (c) 2022 Thomas Buck (thomas@xythobuz.de)
+ *
+ * Copyright (c) 2022 - 2023 Thomas Buck (thomas@xythobuz.de)
  *
  * The MIT License (MIT)
+ *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy

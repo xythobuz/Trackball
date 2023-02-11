@@ -96,3 +96,22 @@ And also start a GDB debugging session.
 
 These commands have also been put in the `flash_swd.sh` and `debug_swd.sh` scripts, respectively.
 Call them from the `build_debug` folder where you checked out and built OpenOCD.
+
+## License
+
+The firmware itself is licensed as GPLv3.
+It uses the [Pi Pico SDK](https://github.com/raspberrypi/pico-sdk), licensed as BSD 3-clause, and therefore also [TinyUSB](https://github.com/hathach/tinyusb), licensed under the MIT license.
+Some code is adapted from the TinyUSB examples.
+And the project uses the [FatFS library](https://github.com/abbrev/fatfs), licensed as BSD 1-clause.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    See <http://www.gnu.org/licenses/>.

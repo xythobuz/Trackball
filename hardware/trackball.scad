@@ -1,6 +1,7 @@
 /*
  * Trackball
- * Copyright 2022 Thomas Buck - thomas@xythobuz.de
+ *
+ * Copyright (c) 2022 - 2023 Thomas Buck (thomas@xythobuz.de)
  *
  * Required parts:
  *  - 1x Raspberry Pi Pico

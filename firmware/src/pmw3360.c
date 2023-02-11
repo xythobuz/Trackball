@@ -1,6 +1,8 @@
 /*
  * pmw3360.c
  *
+ * Copyright (c) 2022 - 2023 Thomas Buck (thomas@xythobuz.de)
+ *
  * Based on:
  *  - PMW3360 Datasheet
  *  - https://github.com/raspberrypi/pico-examples/blob/master/spi/bme280_spi/bme280_spi.c
@@ -15,6 +17,18 @@
  *
  * NOTE: Ensure the PMW3360 breakout board is capable of being driven at 3.3v NOT 5v.
  * The Pico GPIO (and therefore SPI) cannot be used at 5v.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * See <http://www.gnu.org/licenses/>.
  */
 
 #include <stdio.h>
